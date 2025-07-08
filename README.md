@@ -70,6 +70,8 @@ Check out the `examples/` directory for more complex examples:
 
 - `light_example.py` - Simple toggle switch
 - `demo.py` - Traffic light and door lock examples
+- `network_connection.py` - Complex events with data payloads
+- `payment_processing.py` - Real-world payment flow with typed events
 
 ## Development
 

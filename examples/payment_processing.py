@@ -1,0 +1,206 @@
+"""Example: Payment processing with events carrying transaction data."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
+from enum import Enum, auto
+from typing import Optional, Union
+
+from pygenfsm import FSM
+
+
+# Payment states
+class PaymentState(Enum):
+    PENDING = auto()
+    PROCESSING = auto()
+    COMPLETED = auto()
+    FAILED = auto()
+    REFUNDED = auto()
+
+
+# Payment events with data
+@dataclass
+class InitiatePaymentEvent:
+    """Start a new payment."""
+
+    amount: Decimal
+    currency: str
+    customer_id: str
+    payment_method: str
+
+
+@dataclass
+class PaymentAuthorizedEvent:
+    """Payment was authorized by payment provider."""
+
+    authorization_code: str
+    provider_transaction_id: str
+
+
+@dataclass
+class PaymentCompletedEvent:
+    """Payment was successfully completed."""
+
+    transaction_id: str
+    processed_at: datetime
+
+
+@dataclass
+class PaymentFailedEvent:
+    """Payment failed."""
+
+    error_code: str
+    error_message: str
+    can_retry: bool = False
+
+
+@dataclass
+class RefundRequestEvent:
+    """Request to refund the payment."""
+
+    reason: str
+    amount: Optional[Decimal] = None  # None means full refund
+
+
+# Payment data
+@dataclass
+class PaymentData:
+    amount: Optional[Decimal] = None
+    currency: Optional[str] = None
+    customer_id: Optional[str] = None
+    transaction_id: Optional[str] = None
+    authorization_code: Optional[str] = None
+    error_message: Optional[str] = None
+    refund_amount: Optional[Decimal] = None
+    created_at: Optional[datetime] = None
+
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = datetime.now()
+
+
+# Union type for all payment events
+PaymentEvent = Union[
+    InitiatePaymentEvent,
+    PaymentAuthorizedEvent,
+    PaymentCompletedEvent,
+    PaymentFailedEvent,
+    RefundRequestEvent,
+]
+
+# Type alias
+PaymentFSM = FSM[PaymentState, PaymentEvent, PaymentData]
+
+# Create FSM
+payment = PaymentFSM(
+    state=PaymentState.PENDING,
+    data=PaymentData(),
+)
+
+
+# Handlers
+@payment.on(PaymentState.PENDING, InitiatePaymentEvent)
+def initiate_payment(fsm: PaymentFSM, event: InitiatePaymentEvent) -> PaymentState:
+    print(f"💳 Initiating payment of {event.amount} {event.currency}")
+    print(f"   Customer: {event.customer_id}")
+    print(f"   Method: {event.payment_method}")
+
+    fsm.data.amount = event.amount
+    fsm.data.currency = event.currency
+    fsm.data.customer_id = event.customer_id
+
+    return PaymentState.PROCESSING
+
+
+@payment.on(PaymentState.PROCESSING, PaymentAuthorizedEvent)
+def payment_authorized(fsm: PaymentFSM, event: PaymentAuthorizedEvent) -> PaymentState:
+    print("✅ Payment authorized!")
+    print(f"   Auth code: {event.authorization_code}")
+
+    fsm.data.authorization_code = event.authorization_code
+
+    # In real world, we'd capture the payment here
+    # For demo, we'll auto-complete it
+    return PaymentState.PROCESSING
+
+
+@payment.on(PaymentState.PROCESSING, PaymentCompletedEvent)
+def payment_completed(fsm: PaymentFSM, event: PaymentCompletedEvent) -> PaymentState:
+    print("🎉 Payment completed successfully!")
+    print(f"   Transaction ID: {event.transaction_id}")
+    print(f"   Amount: {fsm.data.amount} {fsm.data.currency}")
+
+    fsm.data.transaction_id = event.transaction_id
+
+    return PaymentState.COMPLETED
+
+
+@payment.on(PaymentState.PROCESSING, PaymentFailedEvent)
+def payment_failed(fsm: PaymentFSM, event: PaymentFailedEvent) -> PaymentState:
+    print("❌ Payment failed!")
+    print(f"   Error: [{event.error_code}] {event.error_message}")
+
+    fsm.data.error_message = event.error_message
+
+    if event.can_retry:
+        print("   ⚡ Payment can be retried")
+        return PaymentState.PENDING
+    else:
+        return PaymentState.FAILED
+
+
+@payment.on(PaymentState.COMPLETED, RefundRequestEvent)
+def process_refund(fsm: PaymentFSM, event: RefundRequestEvent) -> PaymentState:
+    refund_amount = event.amount or fsm.data.amount
+    print(f"💸 Processing refund of {refund_amount} {fsm.data.currency}")
+    print(f"   Reason: {event.reason}")
+
+    fsm.data.refund_amount = refund_amount
+
+    return PaymentState.REFUNDED
+
+
+@payment.on(PaymentState.FAILED, RefundRequestEvent)
+def cannot_refund_failed(fsm: PaymentFSM, event: RefundRequestEvent) -> PaymentState:
+    print("⚠️  Cannot refund a failed payment")
+    return PaymentState.FAILED
+
+
+# Demo
+if __name__ == "__main__":
+    print("=== Payment Processing FSM Demo ===\n")
+
+    # Successful payment flow
+    print("--- Successful Payment ---")
+    payment.send(
+        InitiatePaymentEvent(
+            amount=Decimal("99.99"),
+            currency="USD",
+            customer_id="cust_123",
+            payment_method="credit_card",
+        )
+    )
+
+    payment.send(
+        PaymentAuthorizedEvent(
+            authorization_code="AUTH_789", provider_transaction_id="stripe_xyz"
+        )
+    )
+
+    payment.send(
+        PaymentCompletedEvent(transaction_id="TXN_456", processed_at=datetime.now())
+    )
+
+    # Refund
+    print("\n--- Refund Request ---")
+    payment.send(
+        RefundRequestEvent(
+            reason="Customer request",
+            amount=Decimal("50.00"),  # Partial refund
+        )
+    )
+
+    print(f"\nFinal state: {payment.state.name}")
+    print(f"Transaction ID: {payment.data.transaction_id}")
