@@ -1,6 +1,6 @@
 """Tests for the FSM implementation."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
 import pytest
@@ -39,14 +39,14 @@ def test_basic_transition():
     )
 
     @fsm.on(SimpleState.A, GoEvent)
-    def _a_to_b(  # pyright: ignore[reportUnusedFunction]
+    def _a_to_b(
         fsm: FSM[SimpleState, SimpleEvent, SimpleContext], event: GoEvent
     ) -> SimpleState:
         fsm.context.counter += 1
         return SimpleState.B
 
     @fsm.on(SimpleState.B, BackEvent)
-    def _b_to_a(  # pyright: ignore[reportUnusedFunction]
+    def _b_to_a(
         fsm: FSM[SimpleState, SimpleEvent, SimpleContext], event: BackEvent
     ) -> SimpleState:
         fsm.context.counter += 1
@@ -76,3 +76,73 @@ def test_missing_handler():
 
     with pytest.raises(RuntimeError, match="No handler for"):
         fsm.send(GoEvent())
+
+
+def test_clone():
+    """Test FSM cloning functionality."""
+    # Create original FSM
+    original = FSM[SimpleState, SimpleEvent, SimpleContext](
+        state=SimpleState.A,
+        context=SimpleContext(counter=5),
+    )
+
+    # Register handlers
+    @original.on(SimpleState.A, GoEvent)
+    def _a_to_b(
+        fsm: FSM[SimpleState, SimpleEvent, SimpleContext], event: GoEvent
+    ) -> SimpleState:
+        fsm.context.counter += 1
+        return SimpleState.B
+
+    # Clone the FSM
+    cloned = original.clone()
+
+    # Verify initial state
+    assert cloned.state == original.state
+    assert cloned.context.counter == original.context.counter
+    assert cloned is not original
+    assert cloned.context is not original.context
+
+    # Verify handlers are shared
+    assert cloned._handlers is original._handlers  # pyright: ignore[reportPrivateUsage]
+
+    # Modify cloned FSM
+    cloned.send(GoEvent())
+
+    # Verify independence
+    assert cloned.state == SimpleState.B
+    assert original.state == SimpleState.A
+    assert cloned.context.counter == 6
+    assert original.context.counter == 5
+
+
+def test_clone_with_complex_context():
+    """Test cloning with nested data structures in context."""
+
+    @dataclass
+    class ComplexContext:
+        items: list[str] = field(default_factory=lambda: [])
+        metadata: dict[str, int] = field(default_factory=lambda: {})
+
+    # Create FSM with complex context
+    original = FSM[SimpleState, SimpleEvent, ComplexContext](
+        state=SimpleState.A,
+        context=ComplexContext(
+            items=["a", "b", "c"], metadata={"count": 10, "score": 20}
+        ),
+    )
+
+    # Clone it
+    cloned = original.clone()
+
+    # Modify cloned context
+    cloned.context.items.append("d")
+    cloned.context.metadata["count"] = 15
+
+    # Verify original is unaffected
+    assert original.context.items == ["a", "b", "c"]
+    assert original.context.metadata["count"] == 10
+
+    # Verify cloned has changes
+    assert cloned.context.items == ["a", "b", "c", "d"]
+    assert cloned.context.metadata["count"] == 15

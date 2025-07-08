@@ -9,7 +9,8 @@ A minimal, clean, typed and synchronous FSM (Finite State Machine) implementatio
 - **Pythonic**: Decorator-based state handler registration
 - **Synchronous**: Simple, predictable execution model
 - **Context-driven**: Each FSM instance can carry custom data
-- **Contextclass events**: Events are dataclasses that can carry rich data payloads
+- **Dataclass events**: Events are dataclasses that can carry rich data payloads
+- **Cloneable**: FSM instances can be cloned to create independent copies
 
 ## Requirements
 
@@ -125,6 +126,33 @@ def lock_door(fsm: DoorFSM, event: LockEvent) -> DoorState:
 door.send(UnlockEvent(code="1234", user_id=42))
 door.send(LockEvent(auto_lock=True))
 ```
+
+## Cloning FSM Instances
+
+You can create independent copies of an FSM using the `clone()` method:
+
+```python
+# Create an FSM
+original = FSM(state=State.IDLE, context=Context(counter=0))
+
+# ... register handlers ...
+
+# Clone the FSM
+cloned = original.clone()
+
+# The clone has:
+# - Same state as original
+# - Deep copy of context (independent data)
+# - Same handlers (shared behavior)
+
+# Modifications to one don't affect the other
+cloned.send(SomeEvent())  # Only affects cloned FSM
+```
+
+This is useful for:
+- Creating multiple independent instances with the same behavior
+- Saving/restoring FSM state
+- Testing different scenarios from the same starting point
 
 ## Examples
 

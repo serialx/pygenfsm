@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
@@ -88,3 +89,21 @@ class FSM(Generic[S, E, C]):
             raise RuntimeError(msg) from e
         self.state = handler(self, event)  # may mutate self.data
         return self.state
+
+    # ――― cloning ―――
+    def clone(self) -> FSM[S, E, C]:
+        """Create a deep copy of the FSM instance.
+
+        Returns a new FSM instance with:
+        - The same current state
+        - A deep copy of the context
+        - The same handlers (handlers are shared, not copied)
+
+        This is useful for creating independent FSM instances that share
+        the same behavior but have separate state and context.
+        """
+        return FSM(
+            state=self.state,
+            context=deepcopy(self.context),
+            _handlers=self._handlers,  # Share handlers
+        )

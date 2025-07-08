@@ -55,6 +55,11 @@ ignore = ["E501"]  # Line length
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "strict"
+# see https://github.com/microsoft/pyright/issues/7771, we don't want to error on decorated functions in tests
+# which are not otherwise used
+executionEnvironments = [
+  { root = "tests", reportUnusedFunction = false },
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
