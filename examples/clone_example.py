@@ -1,5 +1,6 @@
 """Example demonstrating FSM cloning functionality."""
 
+import asyncio
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
@@ -99,15 +100,15 @@ def create_task_fsm() -> TaskFSM:
     return fsm.clone()  # Clone the original FSM to create a new instance
 
 
-if __name__ == "__main__":
+async def main():
     print("=== FSM Cloning Example ===\n")
 
     # Create original task FSM
     original_task = create_task_fsm()
 
     # Start and fail the original task
-    original_task.send(StartEvent(worker_id=1))
-    original_task.send(FailEvent(error="Network timeout"))
+    await original_task.send(StartEvent(worker_id=1))
+    await original_task.send(FailEvent(error="Network timeout"))
 
     # Clone the FSM to try different scenarios
     print("\n--- Cloning FSM for scenario testing ---\n")
@@ -115,22 +116,22 @@ if __name__ == "__main__":
     # Scenario 1: Retry with same worker
     scenario1 = original_task.clone()
     print("Scenario 1: Retry with same worker")
-    scenario1.send(StartEvent(worker_id=1))
-    scenario1.send(CompleteEvent(result="Success with retry"))
+    await scenario1.send(StartEvent(worker_id=1))
+    await scenario1.send(CompleteEvent(result="Success with retry"))
 
     # Scenario 2: Retry with different worker
     scenario2 = original_task.clone()
     print("\nScenario 2: Retry with different worker")
-    scenario2.send(StartEvent(worker_id=2))
-    scenario2.send(CompleteEvent(result="Success with different worker"))
+    await scenario2.send(StartEvent(worker_id=2))
+    await scenario2.send(CompleteEvent(result="Success with different worker"))
 
     # Scenario 3: Multiple failures
     scenario3 = original_task.clone()
     print("\nScenario 3: Multiple failures")
-    scenario3.send(StartEvent(worker_id=3))
-    scenario3.send(FailEvent(error="Disk full"))
-    scenario3.send(StartEvent(worker_id=4))
-    scenario3.send(FailEvent(error="Out of memory"))
+    await scenario3.send(StartEvent(worker_id=3))
+    await scenario3.send(FailEvent(error="Disk full"))
+    await scenario3.send(StartEvent(worker_id=4))
+    await scenario3.send(FailEvent(error="Out of memory"))
 
     # Show that original is unaffected
     print("\n--- Original FSM State ---")
@@ -156,12 +157,16 @@ if __name__ == "__main__":
 
     # Process tasks in parallel (conceptually)
     for i, fsm in enumerate(fsm_pool):
-        fsm.send(StartEvent(worker_id=i + 10))
+        await fsm.send(StartEvent(worker_id=i + 10))
         if i == 1:
-            fsm.send(FailEvent(error="Random failure"))
+            await fsm.send(FailEvent(error="Random failure"))
         else:
-            fsm.send(CompleteEvent(result=f"Task {i} completed"))
+            await fsm.send(CompleteEvent(result=f"Task {i} completed"))
 
     print("\nPool results:")
     for i, fsm in enumerate(fsm_pool):
         print(f"  FSM {i}: {fsm.state.name}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

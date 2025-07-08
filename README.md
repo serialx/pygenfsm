@@ -1,13 +1,14 @@
 # pygenfsm
 
-A minimal, clean, typed and synchronous FSM (Finite State Machine) implementation inspired by Erlang's gen_fsm.
+A minimal, clean, typed and async FSM (Finite State Machine) implementation inspired by Erlang's gen_fsm.
 
 ## Features
 
 - **Type-safe**: Full typing support with generics
 - **Minimal**: Clean, simple API with no dependencies
 - **Pythonic**: Decorator-based state handler registration
-- **Synchronous**: Simple, predictable execution model
+- **Flexible**: Supports both sync and async handlers in the same FSM
+- **Async-native**: Built for async/await with synchronous compatibility
 - **Context-driven**: Each FSM instance can carry custom data
 - **Dataclass events**: Events are dataclasses that can carry rich data payloads
 - **Cloneable**: FSM instances can be cloned to create independent copies
@@ -25,6 +26,7 @@ pip install pygenfsm
 ## Quick Start
 
 ```python
+import asyncio
 from dataclasses import dataclass
 from enum import Enum, auto
 from pygenfsm import FSM
@@ -52,23 +54,26 @@ fsm = LightFSM(
     context=LightContext(),
 )
 
-# Register handlers using decorators
+# Register async handlers using decorators
 @fsm.on(LightState.OFF, ToggleEvent)
-def turn_on(fsm: LightFSM, event: ToggleEvent):
+async def turn_on(fsm: LightFSM, event: ToggleEvent):
     fsm.context.toggles += 1
     print("Light turned ON")
     return LightState.ON
 
 @fsm.on(LightState.ON, ToggleEvent)
-def turn_off(fsm: LightFSM, event: ToggleEvent):
+async def turn_off(fsm: LightFSM, event: ToggleEvent):
     fsm.context.toggles += 1
     print("Light turned OFF")
     return LightState.OFF
 
 # Use the FSM
-fsm.send(ToggleEvent())  # Light turned ON
-fsm.send(ToggleEvent())  # Light turned OFF
-print(f"Total toggles: {fsm.context.toggles}")  # Total toggles: 2
+async def main():
+    await fsm.send(ToggleEvent())  # Light turned ON
+    await fsm.send(ToggleEvent())  # Light turned OFF
+    print(f"Total toggles: {fsm.context.toggles}")  # Total toggles: 2
+
+asyncio.run(main())
 ```
 
 ## Complex Events with Context
@@ -76,6 +81,7 @@ print(f"Total toggles: {fsm.context.toggles}")  # Total toggles: 2
 Events can carry rich data payloads since they're dataclasses:
 
 ```python
+import asyncio
 from dataclasses import dataclass
 from enum import Enum, auto
 from pygenfsm import FSM
@@ -107,7 +113,7 @@ DoorFSM = FSM[DoorState, DoorEvent, DoorContext]
 door = DoorFSM(state=DoorState.LOCKED, context=DoorContext())
 
 @door.on(DoorState.LOCKED, UnlockEvent)
-def unlock_door(fsm: DoorFSM, event: UnlockEvent) -> DoorState:
+async def unlock_door(fsm: DoorFSM, event: UnlockEvent) -> DoorState:
     if event.code == "1234":
         fsm.context.last_user = event.user_id
         print(f"Door unlocked by user {event.user_id}")
@@ -118,13 +124,16 @@ def unlock_door(fsm: DoorFSM, event: UnlockEvent) -> DoorState:
         return DoorState.LOCKED
 
 @door.on(DoorState.UNLOCKED, LockEvent)
-def lock_door(fsm: DoorFSM, event: LockEvent) -> DoorState:
+async def lock_door(fsm: DoorFSM, event: LockEvent) -> DoorState:
     print(f"Door locked (auto: {event.auto_lock})")
     return DoorState.LOCKED
 
 # Use with rich event data
-door.send(UnlockEvent(code="1234", user_id=42))
-door.send(LockEvent(auto_lock=True))
+async def main():
+    await door.send(UnlockEvent(code="1234", user_id=42))
+    await door.send(LockEvent(auto_lock=True))
+
+asyncio.run(main())
 ```
 
 ## Late Context Injection with FSMBuilder
@@ -137,11 +146,11 @@ from pygenfsm import FSMBuilder
 # Define your FSM builder without context
 builder = FSMBuilder[State, Event, Context](initial_state=State.IDLE)
 
-# Register handlers on the builder
+# Register async handlers on the builder
 @builder.on(State.IDLE, StartEvent)
-def handle_start(fsm, event: StartEvent) -> State:
+async def handle_start(fsm, event: StartEvent) -> State:
     # No need to check if context is None!
-    fsm.context.connection.send(event.data)
+    await fsm.context.connection.send(event.data)
     return State.ACTIVE
 
 # Later, when dependencies are available...
@@ -165,12 +174,48 @@ This pattern is useful for:
 
 Check out the `examples/` directory for more complex examples:
 
-- `light_example.py` - Simple toggle switch
-- `demo.py` - Traffic light and door lock examples
+- `light_example.py` - Simple async toggle switch
+- `demo.py` - Traffic light and door lock examples with async handlers
 - `network_connection.py` - Complex events with data payloads
 - `payment_processing.py` - Real-world payment flow with typed events
 - `context_injection.py` - Using FSMBuilder for late context injection
 - `context_replacement.py` - Replacing context in existing FSM instances
+- `clone_example.py` - Cloning FSM instances for independent copies
+- `mixed_handlers.py` - Mixing sync and async handlers in one FSM
+
+## Mixed Sync/Async Handlers
+
+pygenfsm supports both synchronous and asynchronous handlers in the same FSM:
+
+```python
+# Sync handler - for simple state transitions
+@fsm.on(State.IDLE, StartEvent)
+def start_handler(fsm, event: StartEvent) -> State:
+    # Simple synchronous processing
+    return State.ACTIVE
+
+# Async handler - for I/O or complex operations  
+@fsm.on(State.ACTIVE, ProcessEvent)
+async def process_handler(fsm, event: ProcessEvent) -> State:
+    # Async I/O operations
+    await some_async_operation()
+    return State.DONE
+
+# Both work seamlessly with await fsm.send()
+async def main():
+    await fsm.send(StartEvent())   # Sync handler
+    await fsm.send(ProcessEvent()) # Async handler
+```
+
+## Synchronous Usage
+
+For purely synchronous code, use `send_sync()` with sync handlers:
+
+```python
+# Only works with sync handlers
+fsm.send_sync(StartEvent())
+# Raises RuntimeError if handler is async
+```
 
 ## Design Philosophy
 

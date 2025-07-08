@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -193,24 +194,24 @@ def error_disconnect(fsm: ConnectionFSM, event: DisconnectEvent) -> ConnectionSt
 
 
 # Demo usage
-if __name__ == "__main__":
+async def main():
     print("=== Network Connection FSM Demo ===\n")
 
     # Initial connection attempt
-    connection.send(ConnectEvent(host="api.example.com", port=443, timeout=10.0))
+    await connection.send(ConnectEvent(host="api.example.com", port=443, timeout=10.0))
 
     # Simulate connection error with retry
-    connection.send(
+    await connection.send(
         ConnectionErrorEvent(
             error_code=503, message="Service temporarily unavailable", retry_after=2.0
         )
     )
 
     # Retry
-    connection.send(RetryEvent())
+    await connection.send(RetryEvent())
 
     # Successful connection
-    connection.send(
+    await connection.send(
         ConnectionEstablishedEvent(session_id="sess_123abc", latency_ms=45.3)
     )
 
@@ -218,21 +219,27 @@ if __name__ == "__main__":
     import time
 
     for i in range(3):
-        connection.send(
+        await connection.send(
             ContextReceivedEvent(data=f"Packet {i}".encode(), timestamp=time.time())
         )
 
     # Connection error while connected
-    connection.send(ConnectionErrorEvent(error_code=1001, message="Connection timeout"))
+    await connection.send(
+        ConnectionErrorEvent(error_code=1001, message="Connection timeout")
+    )
 
     # Retry and succeed
-    connection.send(RetryEvent())
-    connection.send(
+    await connection.send(RetryEvent())
+    await connection.send(
         ConnectionEstablishedEvent(session_id="sess_456def", latency_ms=52.1)
     )
 
     # Clean disconnect
-    connection.send(DisconnectEvent())
+    await connection.send(DisconnectEvent())
 
     print(f"\nFinal state: {connection.state.name}")
     print(f"Last error: {connection.context.last_error}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

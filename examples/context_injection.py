@@ -7,6 +7,7 @@ before context is available, then create instances when dependencies
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any
@@ -153,11 +154,13 @@ def complete_processing(fsm: ServiceFSM, event: CompleteEvent) -> ServiceState:
 @builder.on(ServiceState.ERROR, InitializeEvent)
 def reinitialize(fsm: ServiceFSM, event: InitializeEvent) -> ServiceState:
     print("🔄 Attempting to reinitialize from error state...")
-    return initialize(fsm, event)
+    fsm.context.db_connection.connect()
+    fsm.context.logger.info("Service reinitialized successfully")
+    return ServiceState.READY
 
 
 # Demo usage
-if __name__ == "__main__":
+async def main():
     print("=== Context Injection Demo ===\n")
 
     # First, demonstrate that we can't build without context
@@ -181,26 +184,26 @@ if __name__ == "__main__":
 
     # Initialize
     print("4. Initializing service:")
-    service_fsm.send(InitializeEvent())
+    await service_fsm.send(InitializeEvent())
     print(f"   State: {service_fsm.state.name}\n")
 
     # Process some requests
     print("5. Processing requests:")
-    service_fsm.send(
+    await service_fsm.send(
         ProcessRequestEvent(request_id="req_001", data={"action": "fetch"})
     )
-    service_fsm.send(CompleteEvent(result={"status": "success"}))
+    await service_fsm.send(CompleteEvent(result={"status": "success"}))
 
-    service_fsm.send(
+    await service_fsm.send(
         ProcessRequestEvent(request_id="req_002", data={"action": "update"})
     )
-    service_fsm.send(CompleteEvent(result={"status": "success"}))
+    await service_fsm.send(CompleteEvent(result={"status": "success"}))
 
     # Try cached request
-    service_fsm.send(
+    await service_fsm.send(
         ProcessRequestEvent(request_id="req_001", data={"action": "fetch"})
     )
-    service_fsm.send(CompleteEvent(result={"status": "success"}))
+    await service_fsm.send(CompleteEvent(result={"status": "success"}))
 
     print(f"\nFinal state: {service_fsm.state.name}")
     print(f"Total requests processed: {service_fsm.context.request_count}")
@@ -217,6 +220,10 @@ if __name__ == "__main__":
         logger=logger2,
     )
     service_fsm2 = builder.build(context2)
-    service_fsm2.send(InitializeEvent())
+    await service_fsm2.send(InitializeEvent())
     print("   ✅ Second instance created and initialized")
     print("   Both instances share behavior but have separate state/context")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

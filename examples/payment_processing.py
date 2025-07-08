@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -168,12 +169,12 @@ def cannot_refund_failed(fsm: PaymentFSM, event: RefundRequestEvent) -> PaymentS
 
 
 # Demo
-if __name__ == "__main__":
+async def main():
     print("=== Payment Processing FSM Demo ===\n")
 
     # Successful payment flow
     print("--- Successful Payment ---")
-    payment.send(
+    await payment.send(
         InitiatePaymentEvent(
             amount=Decimal("99.99"),
             currency="USD",
@@ -182,19 +183,19 @@ if __name__ == "__main__":
         )
     )
 
-    payment.send(
+    await payment.send(
         PaymentAuthorizedEvent(
             authorization_code="AUTH_789", provider_transaction_id="stripe_xyz"
         )
     )
 
-    payment.send(
+    await payment.send(
         PaymentCompletedEvent(transaction_id="TXN_456", processed_at=datetime.now())
     )
 
     # Refund
     print("\n--- Refund Request ---")
-    payment.send(
+    await payment.send(
         RefundRequestEvent(
             reason="Customer request",
             amount=Decimal("50.00"),  # Partial refund
@@ -203,3 +204,7 @@ if __name__ == "__main__":
 
     print(f"\nFinal state: {payment.state.name}")
     print(f"Transaction ID: {payment.context.transaction_id}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

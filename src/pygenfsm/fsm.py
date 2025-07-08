@@ -1,8 +1,9 @@
-"""A minimal, clean, typed and synchronous FSM implementation inspired by Erlang's gen_fsm."""
+"""A minimal, clean, typed and async FSM implementation inspired by Erlang's gen_fsm."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import inspect
+from collections.abc import Callable, Coroutine
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
@@ -29,14 +30,14 @@ SpecificEventType = TypeVar("SpecificEventType")
 
 
 class Handler(Protocol[S, E, C]):
-    """A state-transition handler.
+    """A state-transition handler that can be sync or async.
 
     Returns the *next* state after handling `event` and (optionally) mutating
     `fsm.data`.
     """
 
-    def __call__(self, fsm: FSM[S, E, C], event: E) -> S:
-        """Handle the state transition."""
+    def __call__(self, fsm: FSM[S, E, C], event: E) -> S | Coroutine[Any, Any, S]:
+        """Handle the state transition (sync or async)."""
         ...
 
 
@@ -54,8 +55,8 @@ class FSMBuilder(Generic[S, E, C]):
     def on(
         self, state: S, event_type: type[SpecificEventType]
     ) -> Callable[
-        [Callable[[FSM[S, E, C], SpecificEventType], S]],
-        Callable[[FSM[S, E, C], SpecificEventType], S],
+        [Callable[[FSM[S, E, C], SpecificEventType], S | Coroutine[Any, Any, S]]],
+        Callable[[FSM[S, E, C], SpecificEventType], S | Coroutine[Any, Any, S]],
     ]:
         """Register a handler for a state/event combination.
 
@@ -64,13 +65,17 @@ class FSMBuilder(Generic[S, E, C]):
         builder = FSMBuilder(initial_state=State.IDLE)
 
         @builder.on(State.IDLE, StartEvent)
-        def handle_start(fsm, evt): ...
+        async def handle_start(fsm, evt): ...
+
+        # Or sync handler
+        @builder.on(State.IDLE, StopEvent)
+        def handle_stop(fsm, evt): ...
         ```
         """
 
         def decorator(
-            fn: Callable[[FSM[S, E, C], SpecificEventType], S],
-        ) -> Callable[[FSM[S, E, C], SpecificEventType], S]:
+            fn: Callable[[FSM[S, E, C], SpecificEventType], S | Coroutine[Any, Any, S]],
+        ) -> Callable[[FSM[S, E, C], SpecificEventType], S | Coroutine[Any, Any, S]]:
             key = (state, event_type)
             self._handlers[key] = cast(Handler[S, E, C], fn)
             return fn
@@ -97,7 +102,7 @@ class FSMBuilder(Generic[S, E, C]):
 
 @dataclass
 class FSM(Generic[S, E, C]):
-    """Minimal synchronous FSM (a Pythonic `gen_fsm`)."""
+    """Minimal async FSM (a Pythonic `gen_fsm`)."""
 
     state: S
     context: C
@@ -107,21 +112,25 @@ class FSM(Generic[S, E, C]):
     def on(
         self, state: S, event_type: type[SpecificEventType]
     ) -> Callable[
-        [Callable[[FSM[S, E, C], SpecificEventType], S]],
-        Callable[[FSM[S, E, C], SpecificEventType], S],
+        [Callable[[FSM[S, E, C], SpecificEventType], S | Coroutine[Any, Any, S]]],
+        Callable[[FSM[S, E, C], SpecificEventType], S | Coroutine[Any, Any, S]],
     ]:
         """Register a handler for a state/event combination.
 
         Usage:
         ```python
         @fsm.on(State.CONNECTING, ConnectionErrorEvent)
-        def handle_error(fsm, evt): ...
+        async def handle_error(fsm, evt): ...
+
+        # Or sync handler
+        @fsm.on(State.IDLE, PingEvent)
+        def handle_ping(fsm, evt): ...
         ```
         """
 
         def decorator(
-            fn: Callable[[FSM[S, E, C], SpecificEventType], S],
-        ) -> Callable[[FSM[S, E, C], SpecificEventType], S]:
+            fn: Callable[[FSM[S, E, C], SpecificEventType], S | Coroutine[Any, Any, S]],
+        ) -> Callable[[FSM[S, E, C], SpecificEventType], S | Coroutine[Any, Any, S]]:
             key = (state, event_type)
             self._handlers[key] = cast(Handler[S, E, C], fn)
             return fn
@@ -129,8 +138,11 @@ class FSM(Generic[S, E, C]):
         return decorator
 
     # ――― event dispatcher ―――
-    def send(self, event: E) -> S:
-        """Send an event to the FSM and transition to the next state."""
+    async def send(self, event: E) -> S:
+        """Send an event to the FSM and transition to the next state.
+
+        Supports both sync and async handlers transparently.
+        """
         key = (self.state, type(event))
 
         try:
@@ -139,7 +151,36 @@ class FSM(Generic[S, E, C]):
             event_repr = type(event).__name__
             msg = f"No handler for ({self.state}, {event_repr})"
             raise RuntimeError(msg) from e
-        self.state = handler(self, event)  # may mutate self.context
+
+        result = handler(self, event)
+        if inspect.iscoroutine(result):
+            self.state = await result  # async handler
+        else:
+            self.state = cast(S, result)  # sync handler
+        return self.state
+
+    def send_sync(self, event: E) -> S:
+        """Send an event to the FSM synchronously.
+
+        This method requires that handlers are synchronous functions.
+        For async handlers, use the async send() method instead.
+        """
+        key = (self.state, type(event))
+
+        try:
+            handler = self._handlers[key]
+        except KeyError as e:
+            event_repr = type(event).__name__
+            msg = f"No handler for ({self.state}, {event_repr})"
+            raise RuntimeError(msg) from e
+
+        # Call handler and check if it's a coroutine
+        result = handler(self, event)
+        if inspect.iscoroutine(result):
+            msg = "Handler returned a coroutine. Use async send() method instead of send_sync()"
+            raise RuntimeError(msg)
+
+        self.state = cast(S, result)  # may mutate self.context
         return self.state
 
     # ――― cloning ―――

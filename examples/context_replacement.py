@@ -6,6 +6,7 @@ useful for scenarios like reconnecting with new connection objects.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -114,28 +115,32 @@ def handle_reconnect(fsm: ConnectionFSM, event: ReconnectEvent) -> ConnectionSta
 
 
 # Demo usage
-if __name__ == "__main__":
+async def main():
     print("=== Context Replacement Demo ===\n")
 
     # Initial connection
     print("1. Initial connection:")
-    fsm.send(ConnectEvent())
+    await fsm.send(ConnectEvent())
     print(f"   State: {fsm.state.name}")
     print(f"   Connection count: {fsm.context.connection_count}\n")
 
     # Reconnect with new connection object
     print("2. Reconnecting (replaces context):")
-    fsm.send(ReconnectEvent())
+    await fsm.send(ReconnectEvent())
     print(f"   State: {fsm.state.name}")
     print(f"   Connection count: {fsm.context.connection_count}\n")
 
     # Another reconnect
     print("3. Another reconnect:")
-    fsm.send(ReconnectEvent())
+    await fsm.send(ReconnectEvent())
     print(f"   State: {fsm.state.name}")
     print(f"   Connection count: {fsm.context.connection_count}\n")
 
     # Normal disconnect
     print("4. Normal disconnect:")
-    fsm.send(DisconnectEvent())
+    await fsm.send(DisconnectEvent())
     print(f"   State: {fsm.state.name}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

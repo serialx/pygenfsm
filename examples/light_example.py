@@ -1,5 +1,6 @@
-"""Example: A toggle light-switch using the FSM."""
+"""Example: A toggle light-switch using the async FSM."""
 
+import asyncio
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -33,22 +34,31 @@ fsm = LightFSM(
 
 
 @fsm.on(LightState.OFF, ToggleEvent)
-def turn_on(fsm: LightFSM, event: ToggleEvent) -> LightState:
+async def turn_on(fsm: LightFSM, event: ToggleEvent) -> LightState:
     fsm.context.toggles += 1
     print("💡  switched ON")
+    # Simulate async operation (e.g., sending command to hardware)
+    await asyncio.sleep(0.1)
     return LightState.ON
 
 
 @fsm.on(LightState.ON, ToggleEvent)
-def turn_off(fsm: LightFSM, event: ToggleEvent) -> LightState:
+async def turn_off(fsm: LightFSM, event: ToggleEvent) -> LightState:
     fsm.context.toggles += 1
     print("💡  switched OFF")
+    # Simulate async operation
+    await asyncio.sleep(0.1)
     return LightState.OFF
 
 
 # Drive it -------------------------------------------------------------------
-if __name__ == "__main__":
+async def main():
+    """Run the light switch FSM demo."""
     for _ in range(3):
-        fsm.send(ToggleEvent())
+        await fsm.send(ToggleEvent())
 
     print("Total toggles:", fsm.context.toggles)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

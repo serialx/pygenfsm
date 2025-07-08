@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
@@ -158,32 +159,36 @@ def reset_door(fsm: DoorFSM, event: ResetEvent) -> DoorState:
     return DoorState.LOCKED
 
 
-if __name__ == "__main__":
+async def main():
     print("=== Traffic Light Demo ===")
     for _ in range(4):
-        traffic_fsm.send(TimerEvent())
+        await traffic_fsm.send(TimerEvent())
 
     print(f"\nTraffic light cycles: {traffic_fsm.context.cycles}")
 
     print("\n=== Emergency Test ===")
-    traffic_fsm.send(EmergencyEvent())
+    await traffic_fsm.send(EmergencyEvent())
 
     print("\n\n=== Door Lock Demo ===")
     # Normal operation
-    door_fsm.send(UnlockEvent())
-    door_fsm.send(LockEvent())
+    await door_fsm.send(UnlockEvent())
+    await door_fsm.send(LockEvent())
 
     # Breach attempts
     print("\n=== Security Test ===")
     for _ in range(4):
         try:
-            door_fsm.send(BreachAttemptEvent())
+            await door_fsm.send(BreachAttemptEvent())
         except RuntimeError as e:
             print(f"Error: {e}")
 
     # Reset after block
-    door_fsm.send(ResetEvent())
+    await door_fsm.send(ResetEvent())
 
     print("\n=== Access Log ===")
     for entry in door_fsm.context.access_log:
         print(f"  - {entry}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
