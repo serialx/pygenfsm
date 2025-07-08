@@ -1,29 +1,113 @@
-# pygenfsm
+# 🔄 pygenfsm
 
-A minimal, clean, typed and async FSM (Finite State Machine) implementation inspired by Erlang's gen_fsm.
+<div align="center">
 
-## Features
+[![PyPI version](https://badge.fury.io/py/pygenfsm.svg)](https://badge.fury.io/py/pygenfsm)
+[![Python](https://img.shields.io/pypi/pyversions/pygenfsm.svg)](https://pypi.org/project/pygenfsm/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Type checked: pyright](https://img.shields.io/badge/type%20checked-pyright-blue.svg)](https://github.com/microsoft/pyright)
+[![Test Coverage](https://img.shields.io/badge/coverage-83%25-green.svg)](https://github.com/serialx/pygenfsm)
 
-- **Type-safe**: Full typing support with generics
-- **Minimal**: Clean, simple API with no dependencies
-- **Pythonic**: Decorator-based state handler registration
-- **Flexible**: Supports both sync and async handlers in the same FSM
-- **Async-native**: Built for async/await with synchronous compatibility
-- **Context-driven**: Each FSM instance can carry custom data
-- **Dataclass events**: Events are dataclasses that can carry rich data payloads
-- **Cloneable**: FSM instances can be cloned to create independent copies
+**A minimal, clean, typed and async-native FSM (Finite State Machine) implementation for Python, inspired by Erlang's gen_fsm**
 
-## Requirements
+[Installation](#-installation) •
+[Quick Start](#-quick-start) •
+[Features](#-features) •
+[Examples](#-examples) •
+[API Reference](#-api-reference) •
+[Contributing](#-contributing)
 
-- Python 3.11+
+</div>
 
-## Installation
+---
 
+## 🎯 Why pygenfsm?
+
+Building robust state machines in Python often involves:
+- 🤯 Complex if/elif chains that grow unmaintainable
+- 🐛 Implicit state that's hard to reason about
+- 🔀 Scattered transition logic across your codebase
+- ❌ No type safety for states and events
+- 🚫 Mixing sync and async code awkwardly
+
+**pygenfsm** solves these problems with a minimal, elegant API that leverages Python's type system and async capabilities.
+
+## ✨ Features
+
+<table>
+<tr>
+<td>
+
+### 🎨 Clean API
+```python
+@fsm.on(State.IDLE, StartEvent)
+def handle_start(fsm, event):
+    return State.RUNNING
+```
+
+</td>
+<td>
+
+### 🔄 Async Native
+```python
+@fsm.on(State.RUNNING, DataEvent)
+async def handle_data(fsm, event):
+    await process_data(event.data)
+    return State.DONE
+```
+
+</td>
+</tr>
+<tr>
+<td>
+
+### 🎯 Type Safe
+```python
+# Full typing with generics
+FSM[StateEnum, EventType, ContextType]
+```
+
+</td>
+<td>
+
+### 🚀 Zero Dependencies
 ```bash
+# Minimal and fast
 pip install pygenfsm
 ```
 
-## Quick Start
+</td>
+</tr>
+</table>
+
+### Key Benefits
+
+- **🔒 Type-safe**: Full typing support with generics for states, events, and context
+- **🎭 Flexible**: Mix sync and async handlers in the same FSM
+- **📦 Minimal**: Zero dependencies, clean API surface
+- **🐍 Pythonic**: Decorator-based, intuitive design
+- **🔄 Async-native**: Built for modern async Python
+- **📊 Context-aware**: Carry data between transitions
+- **🧬 Cloneable**: Fork FSM instances for testing scenarios
+- **🏗️ Builder pattern**: Late context injection support
+
+## 📦 Installation
+
+```bash
+# Using pip
+pip install pygenfsm
+
+# Using uv (recommended)
+uv add pygenfsm
+
+# Using poetry
+poetry add pygenfsm
+```
+
+## 🚀 Quick Start
+
+### Basic Example
 
 ```python
 import asyncio
@@ -31,228 +115,362 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from pygenfsm import FSM
 
-# Define states (enums) and events (dataclasses)
-class LightState(Enum):
-    OFF = auto()
-    ON = auto()
+# 1. Define states as an enum
+class State(Enum):
+    IDLE = auto()
+    RUNNING = auto()
+    DONE = auto()
+
+# 2. Define events as dataclasses
+@dataclass
+class StartEvent:
+    task_id: str
 
 @dataclass
-class ToggleEvent:
-    pass
+class CompleteEvent:
+    result: str
 
-# Optional: Define custom data
-@dataclass
-class LightContext:
-    toggles: int = 0
-
-# Type alias for cleaner code
-LightFSM = FSM[LightState, ToggleEvent, LightContext]
-
-# Create FSM instance
-fsm = LightFSM(
-    state=LightState.OFF,
-    context=LightContext(),
+# 3. Create FSM with initial state
+fsm = FSM[State, StartEvent | CompleteEvent, None](
+    state=State.IDLE,
+    context=None,  # No context needed for simple FSM
 )
 
-# Register async handlers using decorators
-@fsm.on(LightState.OFF, ToggleEvent)
-async def turn_on(fsm: LightFSM, event: ToggleEvent):
-    fsm.context.toggles += 1
-    print("Light turned ON")
-    return LightState.ON
+# 4. Define handlers with decorators
+@fsm.on(State.IDLE, StartEvent)
+def start_handler(fsm, event: StartEvent) -> State:
+    print(f"Starting task {event.task_id}")
+    return State.RUNNING
 
-@fsm.on(LightState.ON, ToggleEvent)
-async def turn_off(fsm: LightFSM, event: ToggleEvent):
-    fsm.context.toggles += 1
-    print("Light turned OFF")
-    return LightState.OFF
+@fsm.on(State.RUNNING, CompleteEvent)
+def complete_handler(fsm, event: CompleteEvent) -> State:
+    print(f"Task completed: {event.result}")
+    return State.DONE
 
-# Use the FSM
+# 5. Run the FSM
 async def main():
-    await fsm.send(ToggleEvent())  # Light turned ON
-    await fsm.send(ToggleEvent())  # Light turned OFF
-    print(f"Total toggles: {fsm.context.toggles}")  # Total toggles: 2
+    await fsm.send(StartEvent(task_id="123"))
+    await fsm.send(CompleteEvent(result="Success!"))
+    print(f"Final state: {fsm.state}")
 
 asyncio.run(main())
 ```
 
-## Complex Events with Context
+## 🎯 Core Concepts
 
-Events can carry rich data payloads since they're dataclasses:
+### States, Events, and Context
+
+pygenfsm is built on three core concepts:
+
+| Concept | Purpose | Implementation |
+|---------|---------|----------------|
+| **States** | The finite set of states your system can be in | Python Enum |
+| **Events** | Things that happen to trigger transitions | Dataclasses |
+| **Context** | Data that persists across transitions | Any Python type |
+
+### Handler Types
+
+pygenfsm seamlessly supports both sync and async handlers:
+
+```python
+# Sync handler - for simple state transitions
+@fsm.on(State.IDLE, SimpleEvent)
+def sync_handler(fsm, event) -> State:
+    # Fast, synchronous logic
+    return State.NEXT
+
+# Async handler - for I/O operations
+@fsm.on(State.LOADING, DataEvent)
+async def async_handler(fsm, event) -> State:
+    # Async I/O, network calls, etc.
+    data = await fetch_data(event.url)
+    fsm.context.data = data
+    return State.READY
+```
+
+## 📚 Examples
+
+### Traffic Light System
+
+```python
+from enum import Enum, auto
+from dataclasses import dataclass
+from pygenfsm import FSM
+
+class Color(Enum):
+    RED = auto()
+    YELLOW = auto()
+    GREEN = auto()
+
+@dataclass
+class TimerEvent:
+    """Timer expired event"""
+    pass
+
+@dataclass
+class EmergencyEvent:
+    """Emergency button pressed"""
+    pass
+
+# Create FSM
+traffic_light = FSM[Color, TimerEvent | EmergencyEvent, None](
+    state=Color.RED,
+    context=None,
+)
+
+@traffic_light.on(Color.RED, TimerEvent)
+def red_to_green(fsm, event) -> Color:
+    print("🔴 → 🟢")
+    return Color.GREEN
+
+@traffic_light.on(Color.GREEN, TimerEvent)
+def green_to_yellow(fsm, event) -> Color:
+    print("🟢 → 🟡")
+    return Color.YELLOW
+
+@traffic_light.on(Color.YELLOW, TimerEvent)
+def yellow_to_red(fsm, event) -> Color:
+    print("🟡 → 🔴")
+    return Color.RED
+
+# Emergency overrides from any state
+for color in Color:
+    @traffic_light.on(color, EmergencyEvent)
+    def emergency(fsm, event) -> Color:
+        print("🚨 EMERGENCY → RED")
+        return Color.RED
+```
+
+### Connection Manager with Retry Logic
 
 ```python
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from pygenfsm import FSM
 
-class DoorState(Enum):
-    LOCKED = auto()
-    UNLOCKED = auto()
+class ConnState(Enum):
+    DISCONNECTED = auto()
+    CONNECTING = auto()
+    CONNECTED = auto()
+    ERROR = auto()
 
 @dataclass
-class UnlockEvent:
-    code: str
-    user_id: int
+class ConnectEvent:
+    host: str
+    port: int
 
 @dataclass
-class LockEvent:
-    auto_lock: bool = False
+class ConnectionContext:
+    retries: int = 0
+    max_retries: int = 3
+    last_error: str = ""
 
-# Union type for multiple event types
-DoorEvent = UnlockEvent | LockEvent
+fsm = FSM[ConnState, ConnectEvent, ConnectionContext](
+    state=ConnState.DISCONNECTED,
+    context=ConnectionContext(),
+)
 
-@dataclass
-class DoorContext:
-    unlock_attempts: int = 0
-    last_user: int = 0
+@fsm.on(ConnState.DISCONNECTED, ConnectEvent)
+async def start_connection(fsm, event: ConnectEvent) -> ConnState:
+    print(f"🔌 Connecting to {event.host}:{event.port}")
+    return ConnState.CONNECTING
 
-# Type alias
-DoorFSM = FSM[DoorState, DoorEvent, DoorContext]
-
-door = DoorFSM(state=DoorState.LOCKED, context=DoorContext())
-
-@door.on(DoorState.LOCKED, UnlockEvent)
-async def unlock_door(fsm: DoorFSM, event: UnlockEvent) -> DoorState:
-    if event.code == "1234":
-        fsm.context.last_user = event.user_id
-        print(f"Door unlocked by user {event.user_id}")
-        return DoorState.UNLOCKED
-    else:
-        fsm.context.unlock_attempts += 1
-        print(f"Invalid code from user {event.user_id}")
-        return DoorState.LOCKED
-
-@door.on(DoorState.UNLOCKED, LockEvent)
-async def lock_door(fsm: DoorFSM, event: LockEvent) -> DoorState:
-    print(f"Door locked (auto: {event.auto_lock})")
-    return DoorState.LOCKED
-
-# Use with rich event data
-async def main():
-    await door.send(UnlockEvent(code="1234", user_id=42))
-    await door.send(LockEvent(auto_lock=True))
-
-asyncio.run(main())
+@fsm.on(ConnState.CONNECTING, ConnectEvent)
+async def attempt_connect(fsm, event: ConnectEvent) -> ConnState:
+    try:
+        # Simulate connection attempt
+        await asyncio.sleep(1)
+        if fsm.context.retries < 2:  # Simulate failures
+            raise ConnectionError("Network timeout")
+        
+        print("✅ Connected!")
+        fsm.context.retries = 0
+        return ConnState.CONNECTED
+        
+    except ConnectionError as e:
+        fsm.context.retries += 1
+        fsm.context.last_error = str(e)
+        
+        if fsm.context.retries >= fsm.context.max_retries:
+            print(f"❌ Max retries reached: {e}")
+            return ConnState.ERROR
+        
+        print(f"🔄 Retry {fsm.context.retries}/{fsm.context.max_retries}")
+        return ConnState.CONNECTING
 ```
 
-## Late Context Injection with FSMBuilder
+## 🏗️ Advanced Patterns
 
-When your context contains objects that are created later in the application lifecycle (like database connections), use `FSMBuilder`:
+### Late Context Injection with FSMBuilder
+
+Perfect for dependency injection and testing:
 
 ```python
 from pygenfsm import FSMBuilder
 
-# Define your FSM builder without context
-builder = FSMBuilder[State, Event, Context](initial_state=State.IDLE)
+# Define builder without context
+builder = FSMBuilder[State, Event, AppContext](
+    initial_state=State.INIT
+)
 
-# Register async handlers on the builder
-@builder.on(State.IDLE, StartEvent)
-async def handle_start(fsm, event: StartEvent) -> State:
-    # No need to check if context is None!
-    await fsm.context.connection.send(event.data)
-    return State.ACTIVE
+@builder.on(State.INIT, StartEvent)
+async def initialize(fsm, event) -> State:
+    # Access context that will be injected later
+    await fsm.context.database.connect()
+    return State.READY
 
-# Later, when dependencies are available...
-db_connection = create_database_connection()
-context = Context(connection=db_connection)
+# Later, when dependencies are ready...
+database = Database(connection_string)
+logger = Logger(level="INFO")
 
-# Build FSM instance with context
-fsm = builder.build(context)
-
-# Or create multiple instances with different contexts
-fsm1 = builder.build(Context(connection=conn1))
-fsm2 = builder.build(Context(connection=conn2))
+# Build FSM with context
+fsm = builder.build(AppContext(
+    database=database,
+    logger=logger,
+))
 ```
 
-This pattern is useful for:
-- Dependency injection scenarios
-- Creating FSM instances after application initialization
-- Building multiple FSM instances with different contexts but same behavior
+### Cloning for Testing Scenarios
 
-## Examples
-
-Check out the `examples/` directory for more complex examples:
-
-- `light_example.py` - Simple async toggle switch
-- `demo.py` - Traffic light and door lock examples with async handlers
-- `network_connection.py` - Complex events with data payloads
-- `payment_processing.py` - Real-world payment flow with typed events
-- `context_injection.py` - Using FSMBuilder for late context injection
-- `context_replacement.py` - Replacing context in existing FSM instances
-- `clone_example.py` - Cloning FSM instances for independent copies
-- `mixed_handlers.py` - Mixing sync and async handlers in one FSM
-
-## Mixed Sync/Async Handlers
-
-pygenfsm supports both synchronous and asynchronous handlers in the same FSM:
+Test different paths without affecting the original:
 
 ```python
-# Sync handler - for simple state transitions
-@fsm.on(State.IDLE, StartEvent)
-def start_handler(fsm, event: StartEvent) -> State:
-    # Simple synchronous processing
-    return State.ACTIVE
+# Create base FSM
+original_fsm = FSM[State, Event, Context](
+    state=State.INITIAL,
+    context=Context(data=[]),
+)
 
-# Async handler - for I/O or complex operations  
-@fsm.on(State.ACTIVE, ProcessEvent)
-async def process_handler(fsm, event: ProcessEvent) -> State:
-    # Async I/O operations
-    await some_async_operation()
-    return State.DONE
+# Clone for testing
+test_scenario_1 = original_fsm.clone()
+test_scenario_2 = original_fsm.clone()
 
-# Both work seamlessly with await fsm.send()
-async def main():
-    await fsm.send(StartEvent())   # Sync handler
-    await fsm.send(ProcessEvent()) # Async handler
+# Run different scenarios
+await test_scenario_1.send(SuccessEvent())
+await test_scenario_2.send(FailureEvent())
+
+# Original remains unchanged
+assert original_fsm.state == State.INITIAL
 ```
 
-## Synchronous Usage
+## 🔌 API Reference
 
-For purely synchronous code, use `send_sync()` with sync handlers:
+### Core Classes
 
-```python
-# Only works with sync handlers
-fsm.send_sync(StartEvent())
-# Raises RuntimeError if handler is async
-```
+#### `FSM[S, E, C]`
 
-## Design Philosophy
+The main FSM class with generic parameters:
+- `S`: State enum type
+- `E`: Event type (can be a Union)
+- `C`: Context type
 
-**States are enums, Events are dataclasses**
+**Methods:**
+- `on(state: S, event_type: type[E])`: Decorator to register handlers
+- `async send(event: E) -> S`: Send event and transition state
+- `send_sync(event: E) -> S`: Synchronous send (only for sync handlers)
+- `clone() -> FSM[S, E, C]`: Create independent copy
+- `replace_context(context: C) -> None`: Replace context
 
-- **States**: Use Python enums to represent the finite set of possible states
-- **Events**: Use dataclasses to represent events, allowing them to carry rich data payloads
-- **Context**: Use dataclasses for FSM instance data to maintain state between transitions
+#### `FSMBuilder[S, E, C]`
 
-This design provides:
-- **Type safety**: Full typing support with precise event types
-- **Flexibility**: Events can carry any data needed for state transitions
-- **Clarity**: Clear separation between states (what the FSM *is*) and events (what *happens* to the FSM)
+Builder for late context injection:
+- `on(state: S, event_type: type[E])`: Register handlers
+- `build(context: C) -> FSM[S, E, C]`: Create FSM with context
 
-## Development
+### Best Practices
+
+1. **Use sync handlers for:**
+   - Simple state transitions
+   - Pure computations
+   - Context updates
+
+2. **Use async handlers for:**
+   - Network I/O
+   - Database operations
+   - File system access
+   - Long computations
+
+3. **Event Design:**
+   - Make events immutable (use frozen dataclasses)
+   - Include all necessary data in events
+   - Use Union types for multiple events per state
+
+4. **Context Design:**
+   - Keep context focused and minimal
+   - Use dataclasses for structure
+   - Avoid circular references
+
+## 🤝 Contributing
+
+We love contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ```bash
-# Install development dependencies
+# Setup development environment
+git clone https://github.com/serialx/pygenfsm
+cd pygenfsm
 uv sync
 
 # Run tests
 uv run pytest
 
-# Run type checking
-uv run pyright
-
-# Run linter and formatter
-uv run ruff check --fix
-uv run ruff format
-
-# Install pre-commit hooks
-uv run pre-commit install
-
-# Run all pre-commit hooks manually
-uv run pre-commit run --all-files
+# Run linting
+uv run ruff check .
+uv run pyright .
 ```
 
-## License
+## 📊 Comparison with transitions
 
-MIT License - see LICENSE file for details.
+### Feature Comparison
+
+| Feature | pygenfsm | transitions |
+|---------|----------|-------------|
+| **Event Data** | ✅ First-class with dataclasses | ❌ Limited (callbacks, conditions) |
+| **Async Support** | ✅ Native async/await | ❌ No built-in support |
+| **Type Safety** | ✅ Full generics | ⚠️ Runtime checks only |
+| **State Definition** | ✅ Enums (type-safe) | ⚠️ Strings/objects |
+| **Handler Registration** | ✅ Decorators | ❌ Configuration dicts |
+| **Context/Model** | ✅ Explicit, typed | ⚠️ Implicit on model |
+| **Dependencies** | ✅ Zero | ❌ Multiple (six, etc.) |
+| **Visualization** | ❌ Not built-in | ✅ GraphViz support |
+| **Hierarchical States** | ❌ No | ✅ Yes (HSM) |
+| **Parallel States** | ❌ No | ✅ Yes |
+| **State History** | ❌ No | ✅ Yes |
+| **Guards/Conditions** | ⚠️ In handler logic | ✅ Built-in |
+| **Callbacks** | ⚠️ In handlers | ✅ before/after/prepare |
+| **Size** | ~300 LOC | ~3000 LOC |
+
+### When to Use Each
+
+**Use pygenfsm when you need:**
+- 🔒 Strong type safety with IDE support
+- 🔄 Native async/await support
+- 📦 Zero dependencies
+- 🎯 Event-driven architecture with rich data
+- 🚀 Modern Python patterns (3.11+)
+- 🧪 Easy testing with full typing
+
+**Use transitions when you need:**
+- 📊 State diagram visualization
+- 🎄 Hierarchical states (HSM)
+- ⚡ Parallel state machines
+- 📜 State history tracking
+- 🔄 Complex transition guards/conditions
+- 🏗️ Legacy Python support
+
+## 🔗 Links
+
+- **GitHub**: [github.com/serialx/pygenfsm](https://github.com/serialx/pygenfsm)
+- **PyPI**: [pypi.org/project/pygenfsm](https://pypi.org/project/pygenfsm)
+- **Documentation**: [Full API Docs](https://github.com/serialx/pygenfsm/wiki)
+- **Issues**: [Report bugs or request features](https://github.com/serialx/pygenfsm/issues)
+
+## 📜 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+Made with ❤️ by developers who love clean state machines
+</div>
