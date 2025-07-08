@@ -21,26 +21,25 @@ class LightData:
     toggles: int = 0
 
 
+# Type alias for cleaner code
+LightFSM = FSM[LightState, LightEvent, LightData]
+
 # Build the FSM ---------------------------------------------------------------
-fsm = FSM[LightState, LightEvent, LightData](
+fsm = LightFSM(
     state=LightState.OFF,
     data=LightData(),
 )
 
 
 @fsm.on(LightState.OFF, LightEvent.TOGGLE)
-def turn_on(
-    fsm: FSM[LightState, LightEvent, LightData], event: LightEvent
-) -> LightState:
+def turn_on(fsm: LightFSM, event: LightEvent) -> LightState:
     fsm.data.toggles += 1
     print("💡  switched ON")
     return LightState.ON
 
 
 @fsm.on(LightState.ON, LightEvent.TOGGLE)
-def turn_off(
-    fsm: FSM[LightState, LightEvent, LightData], event: LightEvent
-) -> LightState:
+def turn_off(fsm: LightFSM, event: LightEvent) -> LightState:
     fsm.data.toggles += 1
     print("💡  switched OFF")
     return LightState.OFF

@@ -26,33 +26,30 @@ class TrafficData:
     emergency_mode: bool = False
 
 
-traffic_fsm = FSM[TrafficState, TrafficEvent, TrafficData](
+# Type alias for cleaner code
+TrafficFSM = FSM[TrafficState, TrafficEvent, TrafficData]
+
+traffic_fsm = TrafficFSM(
     state=TrafficState.RED,
     data=TrafficData(),
 )
 
 
 @traffic_fsm.on(TrafficState.RED, TrafficEvent.TIMER)
-def red_to_green(
-    fsm: FSM[TrafficState, TrafficEvent, TrafficData], event: TrafficEvent
-) -> TrafficState:
+def red_to_green(fsm: TrafficFSM, event: TrafficEvent) -> TrafficState:
     fsm.data.cycles += 1
     print("🔴 → 🟢 (RED to GREEN)")
     return TrafficState.GREEN
 
 
 @traffic_fsm.on(TrafficState.GREEN, TrafficEvent.TIMER)
-def green_to_yellow(
-    fsm: FSM[TrafficState, TrafficEvent, TrafficData], event: TrafficEvent
-) -> TrafficState:
+def green_to_yellow(fsm: TrafficFSM, event: TrafficEvent) -> TrafficState:
     print("🟢 → 🟡 (GREEN to YELLOW)")
     return TrafficState.YELLOW
 
 
 @traffic_fsm.on(TrafficState.YELLOW, TrafficEvent.TIMER)
-def yellow_to_red(
-    fsm: FSM[TrafficState, TrafficEvent, TrafficData], event: TrafficEvent
-) -> TrafficState:
+def yellow_to_red(fsm: TrafficFSM, event: TrafficEvent) -> TrafficState:
     print("🟡 → 🔴 (YELLOW to RED)")
     return TrafficState.RED
 
@@ -61,9 +58,7 @@ def yellow_to_red(
 for state in TrafficState:
 
     @traffic_fsm.on(state, TrafficEvent.EMERGENCY)
-    def handle_emergency(
-        fsm: FSM[TrafficState, TrafficEvent, TrafficData], event: TrafficEvent
-    ) -> TrafficState:
+    def handle_emergency(fsm: TrafficFSM, event: TrafficEvent) -> TrafficState:
         fsm.data.emergency_mode = True
         print(f"⚠️  EMERGENCY from {fsm.state.name} → RED")
         return TrafficState.RED
@@ -90,16 +85,17 @@ class DoorData:
     access_log: list[str] = field(default_factory=list)
 
 
-door_fsm = FSM[DoorState, DoorEvent, DoorData](
+# Type alias for cleaner code
+DoorFSM = FSM[DoorState, DoorEvent, DoorData]
+
+door_fsm = DoorFSM(
     state=DoorState.LOCKED,
     data=DoorData(),
 )
 
 
 @door_fsm.on(DoorState.LOCKED, DoorEvent.UNLOCK)
-def unlock_door(
-    fsm: FSM[DoorState, DoorEvent, DoorData], event: DoorEvent
-) -> DoorState:
+def unlock_door(fsm: DoorFSM, event: DoorEvent) -> DoorState:
     fsm.data.access_log.append("Door unlocked")
     fsm.data.failed_attempts = 0
     print("🔓 Door unlocked")
@@ -107,16 +103,14 @@ def unlock_door(
 
 
 @door_fsm.on(DoorState.UNLOCKED, DoorEvent.LOCK)
-def lock_door(fsm: FSM[DoorState, DoorEvent, DoorData], event: DoorEvent) -> DoorState:
+def lock_door(fsm: DoorFSM, event: DoorEvent) -> DoorState:
     fsm.data.access_log.append("Door locked")
     print("🔒 Door locked")
     return DoorState.LOCKED
 
 
 @door_fsm.on(DoorState.LOCKED, DoorEvent.BREACH_ATTEMPT)
-def handle_breach(
-    fsm: FSM[DoorState, DoorEvent, DoorData], event: DoorEvent
-) -> DoorState:
+def handle_breach(fsm: DoorFSM, event: DoorEvent) -> DoorState:
     fsm.data.failed_attempts += 1
     fsm.data.access_log.append(f"Breach attempt #{fsm.data.failed_attempts}")
 
@@ -131,7 +125,7 @@ def handle_breach(
 
 
 @door_fsm.on(DoorState.BLOCKED, DoorEvent.RESET)
-def reset_door(fsm: FSM[DoorState, DoorEvent, DoorData], event: DoorEvent) -> DoorState:
+def reset_door(fsm: DoorFSM, event: DoorEvent) -> DoorState:
     fsm.data.failed_attempts = 0
     fsm.data.access_log.append("Security reset")
     print("🔄 Security reset - Door locked")

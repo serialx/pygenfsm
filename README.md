@@ -36,21 +36,24 @@ class LightEvent(Enum):
 class LightData:
     toggles: int = 0
 
+# Type alias for cleaner code
+LightFSM = FSM[LightState, LightEvent, LightData]
+
 # Create FSM instance
-fsm = FSM[LightState, LightEvent, LightData](
+fsm = LightFSM(
     state=LightState.OFF,
     data=LightData(),
 )
 
 # Register handlers using decorators
 @fsm.on(LightState.OFF, LightEvent.TOGGLE)
-def turn_on(fsm, evt):
+def turn_on(fsm: LightFSM, event: LightEvent):
     fsm.data.toggles += 1
     print("Light turned ON")
     return LightState.ON
 
 @fsm.on(LightState.ON, LightEvent.TOGGLE)
-def turn_off(fsm, evt):
+def turn_off(fsm: LightFSM, event: LightEvent):
     fsm.data.toggles += 1
     print("Light turned OFF")
     return LightState.OFF
