@@ -8,59 +8,63 @@ import pytest
 from pygenfsm import FSM
 
 
-class TestState(Enum):
+class SimpleState(Enum):
     A = auto()
     B = auto()
 
 
-class TestEvent(Enum):
+class SimpleEvent(Enum):
     GO = auto()
     BACK = auto()
 
 
 @dataclass
-class TestData:
+class SimpleData:
     counter: int = 0
 
 
 def test_basic_transition():
     """Test basic state transitions."""
-    fsm = FSM[TestState, TestEvent, TestData](
-        state=TestState.A,
-        data=TestData(),
+    fsm = FSM[SimpleState, SimpleEvent, SimpleData](
+        state=SimpleState.A,
+        data=SimpleData(),
     )
 
-    @fsm.on(TestState.A, TestEvent.GO)
-    def a_to_b(fsm: FSM[TestState, TestEvent, TestData], event: TestEvent) -> TestState:  # pyright: ignore[reportUnusedFunction]
+    @fsm.on(SimpleState.A, SimpleEvent.GO)
+    def _a_to_b(  # pyright: ignore[reportUnusedFunction]
+        fsm: FSM[SimpleState, SimpleEvent, SimpleData], event: SimpleEvent
+    ) -> SimpleState:
         fsm.data.counter += 1
-        return TestState.B
+        return SimpleState.B
 
-    @fsm.on(TestState.B, TestEvent.BACK)
-    def b_to_a(fsm: FSM[TestState, TestEvent, TestData], event: TestEvent) -> TestState:  # pyright: ignore[reportUnusedFunction]
+    @fsm.on(SimpleState.B, SimpleEvent.BACK)
+    def _b_to_a(  # pyright: ignore[reportUnusedFunction]
+        fsm: FSM[SimpleState, SimpleEvent, SimpleData], event: SimpleEvent
+    ) -> SimpleState:
         fsm.data.counter += 1
-        return TestState.A
+        return SimpleState.A
 
-    assert fsm.state == TestState.A
+    assert fsm.state == SimpleState.A
     assert fsm.data.counter == 0
 
-    new_state = fsm.send(TestEvent.GO)
-    assert new_state == TestState.B
-    assert fsm.state == TestState.B
+    new_state = fsm.send(SimpleEvent.GO)
+    assert new_state == SimpleState.B
+    assert fsm.state == SimpleState.B
     assert fsm.data.counter == 1
 
-    new_state = fsm.send(TestEvent.BACK)
-    assert new_state == TestState.A
-    assert fsm.state == TestState.A
+    new_state = fsm.send(SimpleEvent.BACK)
+    assert new_state == SimpleState.A
+    assert fsm.state == SimpleState.A
     expected_count = 2
     assert fsm.data.counter == expected_count
 
 
 def test_missing_handler():
     """Test that missing handlers raise RuntimeError."""
-    fsm = FSM[TestState, TestEvent, TestData](
-        state=TestState.A,
-        data=TestData(),
+    fsm = FSM[SimpleState, SimpleEvent, SimpleData](
+        state=SimpleState.A,
+        data=SimpleData(),
     )
 
     with pytest.raises(RuntimeError, match="No handler for"):
-        fsm.send(TestEvent.GO)
+        fsm.send(SimpleEvent.GO)

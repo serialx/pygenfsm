@@ -28,9 +28,9 @@ classifiers = [
 keywords = ["fsm", "finite-state-machine", "state-machine", "erlang", "gen_fsm"]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/pygenfsm"
-Repository = "https://github.com/yourusername/pygenfsm"
-Issues = "https://github.com/yourusername/pygenfsm/issues"
+Homepage = "https://github.com/serialx/pygenfsm"
+Repository = "https://github.com/serialx/pygenfsm"
+Issues = "https://github.com/serialx/pygenfsm/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pygenfsm"]
@@ -45,62 +45,19 @@ dev-dependencies = [
 ]
 
 [tool.ruff]
-line-length = 88
 target-version = "py38"
-src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = [
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort
-    "B",    # flake8-bugbear
-    "C4",   # flake8-comprehensions
-    "UP",   # pyupgrade
-    "ARG",  # flake8-unused-arguments
-    "SIM",  # flake8-simplify
-    "N",    # pep8-naming
-    "RUF",  # Ruff-specific rules
-    "T20",  # flake8-print
-    "D",    # pydocstyle
-    "PL",   # Pylint
-    "TRY",  # tryceratops
-    "ERA",  # eradicate
-]
-ignore = [
-    "E501",   # line too long (handled by formatter)
-    "D100",   # Missing docstring in public module
-    "D104",   # Missing docstring in public package
-    "D105",   # Missing docstring in magic method
-    "D107",   # Missing docstring in __init__
-    "T201",   # print found (ok in examples)
-    "UP007",  # Use X | Y for type annotations (Python 3.10+)
-    "UP045",  # Use X | None for type annotations (Python 3.10+)
-]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501", "UP007", "UP045"]  # Line length, union syntax (3.10+)
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D", "ARG"]
-"examples/*" = ["D", "T20", "ARG"]  # ARG: handler params are part of the API
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
+"tests/*" = ["D"]
+"examples/*" = ["D", "T20"]
 
 [tool.pyright]
-include = ["src", "tests", "examples"]
-exclude = ["**/__pycache__"]
 pythonVersion = "3.8"
 typeCheckingMode = "strict"
-reportMissingImports = true
-reportMissingTypeStubs = false
-reportPrivateUsage = false
-reportUnusedFunction = false  # Test functions are used by decorators
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

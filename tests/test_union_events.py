@@ -49,7 +49,7 @@ def test_union_event_types():
 
     # Register handlers for specific event types
     @fsm.on(DoorState.LOCKED, UnlockEvent)
-    def unlock(  # pyright: ignore[reportUnusedFunction]
+    def _unlock(  # pyright: ignore[reportUnusedFunction]
         fsm: FSM[DoorState, DoorEvent, DoorData], event: UnlockEvent
     ) -> DoorState:
         fsm.data.unlock_attempts += 1
@@ -57,11 +57,13 @@ def test_union_event_types():
         return DoorState.UNLOCKED
 
     @fsm.on(DoorState.UNLOCKED, LockEvent)
-    def lock(fsm: FSM[DoorState, DoorEvent, DoorData], event: LockEvent) -> DoorState:  # pyright: ignore[reportUnusedFunction]
+    def _lock(  # pyright: ignore[reportUnusedFunction]
+        fsm: FSM[DoorState, DoorEvent, DoorData], event: LockEvent
+    ) -> DoorState:
         return DoorState.LOCKED
 
     @fsm.on(DoorState.LOCKED, ForceOpenEvent)
-    def force_open(  # pyright: ignore[reportUnusedFunction]
+    def _force_open(  # pyright: ignore[reportUnusedFunction]
         fsm: FSM[DoorState, DoorEvent, DoorData], event: ForceOpenEvent
     ) -> DoorState:
         if event.admin_override:

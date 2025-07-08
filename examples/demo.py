@@ -82,7 +82,7 @@ class DoorEvent(Enum):
 class DoorData:
     failed_attempts: int = 0
     max_attempts: int = 3
-    access_log: list[str] = field(default_factory=list)
+    access_log: list[str] = field(default_factory=lambda: [])
 
 
 # Type alias for cleaner code

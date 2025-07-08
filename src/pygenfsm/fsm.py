@@ -49,7 +49,7 @@ class FSM(Generic[S, E, D]):
 
     state: S
     data: D
-    _handlers: dict[tuple[S, Any], Handler[S, E, D]] = field(default_factory=dict)
+    _handlers: dict[tuple[S, Any], Handler[S, E, D]] = field(default_factory=lambda: {})
 
     # ――― decorator for registering handlers ―――
     def on(
