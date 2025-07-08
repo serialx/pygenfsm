@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import Union
 
 from pygenfsm import FSM
 
@@ -15,9 +16,14 @@ class TrafficState(Enum):
     GREEN = auto()
 
 
-class TrafficEvent(Enum):
-    TIMER = auto()
-    EMERGENCY = auto()
+@dataclass
+class TimerEvent:
+    pass
+
+
+@dataclass
+class EmergencyEvent:
+    pass
 
 
 @dataclass
@@ -25,6 +31,9 @@ class TrafficData:
     cycles: int = 0
     emergency_mode: bool = False
 
+
+# Union type for traffic events
+TrafficEvent = Union[TimerEvent, EmergencyEvent]
 
 # Type alias for cleaner code
 TrafficFSM = FSM[TrafficState, TrafficEvent, TrafficData]
@@ -35,21 +44,21 @@ traffic_fsm = TrafficFSM(
 )
 
 
-@traffic_fsm.on(TrafficState.RED, TrafficEvent.TIMER)
-def red_to_green(fsm: TrafficFSM, event: TrafficEvent) -> TrafficState:
+@traffic_fsm.on(TrafficState.RED, TimerEvent)
+def red_to_green(fsm: TrafficFSM, event: TimerEvent) -> TrafficState:
     fsm.data.cycles += 1
     print("🔴 → 🟢 (RED to GREEN)")
     return TrafficState.GREEN
 
 
-@traffic_fsm.on(TrafficState.GREEN, TrafficEvent.TIMER)
-def green_to_yellow(fsm: TrafficFSM, event: TrafficEvent) -> TrafficState:
+@traffic_fsm.on(TrafficState.GREEN, TimerEvent)
+def green_to_yellow(fsm: TrafficFSM, event: TimerEvent) -> TrafficState:
     print("🟢 → 🟡 (GREEN to YELLOW)")
     return TrafficState.YELLOW
 
 
-@traffic_fsm.on(TrafficState.YELLOW, TrafficEvent.TIMER)
-def yellow_to_red(fsm: TrafficFSM, event: TrafficEvent) -> TrafficState:
+@traffic_fsm.on(TrafficState.YELLOW, TimerEvent)
+def yellow_to_red(fsm: TrafficFSM, event: TimerEvent) -> TrafficState:
     print("🟡 → 🔴 (YELLOW to RED)")
     return TrafficState.RED
 
@@ -57,8 +66,8 @@ def yellow_to_red(fsm: TrafficFSM, event: TrafficEvent) -> TrafficState:
 # Emergency handler for all states
 for state in TrafficState:
 
-    @traffic_fsm.on(state, TrafficEvent.EMERGENCY)
-    def handle_emergency(fsm: TrafficFSM, event: TrafficEvent) -> TrafficState:
+    @traffic_fsm.on(state, EmergencyEvent)
+    def handle_emergency(fsm: TrafficFSM, event: EmergencyEvent) -> TrafficState:
         fsm.data.emergency_mode = True
         print(f"⚠️  EMERGENCY from {fsm.state.name} → RED")
         return TrafficState.RED
@@ -71,11 +80,24 @@ class DoorState(Enum):
     BLOCKED = auto()
 
 
-class DoorEvent(Enum):
-    UNLOCK = auto()
-    LOCK = auto()
-    BREACH_ATTEMPT = auto()
-    RESET = auto()
+@dataclass
+class UnlockEvent:
+    pass
+
+
+@dataclass
+class LockEvent:
+    pass
+
+
+@dataclass
+class BreachAttemptEvent:
+    pass
+
+
+@dataclass
+class ResetEvent:
+    pass
 
 
 @dataclass
@@ -84,6 +106,9 @@ class DoorData:
     max_attempts: int = 3
     access_log: list[str] = field(default_factory=lambda: [])
 
+
+# Union type for door events
+DoorEvent = Union[UnlockEvent, LockEvent, BreachAttemptEvent, ResetEvent]
 
 # Type alias for cleaner code
 DoorFSM = FSM[DoorState, DoorEvent, DoorData]
@@ -94,23 +119,23 @@ door_fsm = DoorFSM(
 )
 
 
-@door_fsm.on(DoorState.LOCKED, DoorEvent.UNLOCK)
-def unlock_door(fsm: DoorFSM, event: DoorEvent) -> DoorState:
+@door_fsm.on(DoorState.LOCKED, UnlockEvent)
+def unlock_door(fsm: DoorFSM, event: UnlockEvent) -> DoorState:
     fsm.data.access_log.append("Door unlocked")
     fsm.data.failed_attempts = 0
     print("🔓 Door unlocked")
     return DoorState.UNLOCKED
 
 
-@door_fsm.on(DoorState.UNLOCKED, DoorEvent.LOCK)
-def lock_door(fsm: DoorFSM, event: DoorEvent) -> DoorState:
+@door_fsm.on(DoorState.UNLOCKED, LockEvent)
+def lock_door(fsm: DoorFSM, event: LockEvent) -> DoorState:
     fsm.data.access_log.append("Door locked")
     print("🔒 Door locked")
     return DoorState.LOCKED
 
 
-@door_fsm.on(DoorState.LOCKED, DoorEvent.BREACH_ATTEMPT)
-def handle_breach(fsm: DoorFSM, event: DoorEvent) -> DoorState:
+@door_fsm.on(DoorState.LOCKED, BreachAttemptEvent)
+def handle_breach(fsm: DoorFSM, event: BreachAttemptEvent) -> DoorState:
     fsm.data.failed_attempts += 1
     fsm.data.access_log.append(f"Breach attempt #{fsm.data.failed_attempts}")
 
@@ -124,8 +149,8 @@ def handle_breach(fsm: DoorFSM, event: DoorEvent) -> DoorState:
         return DoorState.LOCKED
 
 
-@door_fsm.on(DoorState.BLOCKED, DoorEvent.RESET)
-def reset_door(fsm: DoorFSM, event: DoorEvent) -> DoorState:
+@door_fsm.on(DoorState.BLOCKED, ResetEvent)
+def reset_door(fsm: DoorFSM, event: ResetEvent) -> DoorState:
     fsm.data.failed_attempts = 0
     fsm.data.access_log.append("Security reset")
     print("🔄 Security reset - Door locked")
@@ -135,28 +160,28 @@ def reset_door(fsm: DoorFSM, event: DoorEvent) -> DoorState:
 if __name__ == "__main__":
     print("=== Traffic Light Demo ===")
     for _ in range(4):
-        traffic_fsm.send(TrafficEvent.TIMER)
+        traffic_fsm.send(TimerEvent())
 
     print(f"\nTraffic light cycles: {traffic_fsm.data.cycles}")
 
     print("\n=== Emergency Test ===")
-    traffic_fsm.send(TrafficEvent.EMERGENCY)
+    traffic_fsm.send(EmergencyEvent())
 
     print("\n\n=== Door Lock Demo ===")
     # Normal operation
-    door_fsm.send(DoorEvent.UNLOCK)
-    door_fsm.send(DoorEvent.LOCK)
+    door_fsm.send(UnlockEvent())
+    door_fsm.send(LockEvent())
 
     # Breach attempts
     print("\n=== Security Test ===")
     for _ in range(4):
         try:
-            door_fsm.send(DoorEvent.BREACH_ATTEMPT)
+            door_fsm.send(BreachAttemptEvent())
         except RuntimeError as e:
             print(f"Error: {e}")
 
     # Reset after block
-    door_fsm.send(DoorEvent.RESET)
+    door_fsm.send(ResetEvent())
 
     print("\n=== Access Log ===")
     for entry in door_fsm.data.access_log:

@@ -9,6 +9,7 @@ A minimal, clean, typed and synchronous FSM (Finite State Machine) implementatio
 - **Pythonic**: Decorator-based state handler registration
 - **Synchronous**: Simple, predictable execution model
 - **Data-driven**: Each FSM instance can carry custom data
+- **Dataclass events**: Events are dataclasses that can carry rich data payloads
 
 ## Installation
 
@@ -23,13 +24,14 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from pygenfsm import FSM
 
-# Define states and events
+# Define states (enums) and events (dataclasses)
 class LightState(Enum):
     OFF = auto()
     ON = auto()
 
-class LightEvent(Enum):
-    TOGGLE = auto()
+@dataclass
+class ToggleEvent:
+    pass
 
 # Optional: Define custom data
 @dataclass
@@ -37,7 +39,7 @@ class LightData:
     toggles: int = 0
 
 # Type alias for cleaner code
-LightFSM = FSM[LightState, LightEvent, LightData]
+LightFSM = FSM[LightState, ToggleEvent, LightData]
 
 # Create FSM instance
 fsm = LightFSM(
@@ -46,22 +48,79 @@ fsm = LightFSM(
 )
 
 # Register handlers using decorators
-@fsm.on(LightState.OFF, LightEvent.TOGGLE)
-def turn_on(fsm: LightFSM, event: LightEvent):
+@fsm.on(LightState.OFF, ToggleEvent)
+def turn_on(fsm: LightFSM, event: ToggleEvent):
     fsm.data.toggles += 1
     print("Light turned ON")
     return LightState.ON
 
-@fsm.on(LightState.ON, LightEvent.TOGGLE)
-def turn_off(fsm: LightFSM, event: LightEvent):
+@fsm.on(LightState.ON, ToggleEvent)
+def turn_off(fsm: LightFSM, event: ToggleEvent):
     fsm.data.toggles += 1
     print("Light turned OFF")
     return LightState.OFF
 
 # Use the FSM
-fsm.send(LightEvent.TOGGLE)  # Light turned ON
-fsm.send(LightEvent.TOGGLE)  # Light turned OFF
+fsm.send(ToggleEvent())  # Light turned ON
+fsm.send(ToggleEvent())  # Light turned OFF
 print(f"Total toggles: {fsm.data.toggles}")  # Total toggles: 2
+```
+
+## Complex Events with Data
+
+Events can carry rich data payloads since they're dataclasses:
+
+```python
+from dataclasses import dataclass
+from enum import Enum, auto
+from typing import Union
+from pygenfsm import FSM
+
+class DoorState(Enum):
+    LOCKED = auto()
+    UNLOCKED = auto()
+
+@dataclass
+class UnlockEvent:
+    code: str
+    user_id: int
+
+@dataclass
+class LockEvent:
+    auto_lock: bool = False
+
+# Union type for multiple event types
+DoorEvent = Union[UnlockEvent, LockEvent]
+
+@dataclass
+class DoorData:
+    unlock_attempts: int = 0
+    last_user: int = 0
+
+# Type alias
+DoorFSM = FSM[DoorState, DoorEvent, DoorData]
+
+door = DoorFSM(state=DoorState.LOCKED, data=DoorData())
+
+@door.on(DoorState.LOCKED, UnlockEvent)
+def unlock_door(fsm: DoorFSM, event: UnlockEvent) -> DoorState:
+    if event.code == "1234":
+        fsm.data.last_user = event.user_id
+        print(f"Door unlocked by user {event.user_id}")
+        return DoorState.UNLOCKED
+    else:
+        fsm.data.unlock_attempts += 1
+        print(f"Invalid code from user {event.user_id}")
+        return DoorState.LOCKED
+
+@door.on(DoorState.UNLOCKED, LockEvent)
+def lock_door(fsm: DoorFSM, event: LockEvent) -> DoorState:
+    print(f"Door locked (auto: {event.auto_lock})")
+    return DoorState.LOCKED
+
+# Use with rich event data
+door.send(UnlockEvent(code="1234", user_id=42))
+door.send(LockEvent(auto_lock=True))
 ```
 
 ## Examples
@@ -72,6 +131,19 @@ Check out the `examples/` directory for more complex examples:
 - `demo.py` - Traffic light and door lock examples
 - `network_connection.py` - Complex events with data payloads
 - `payment_processing.py` - Real-world payment flow with typed events
+
+## Design Philosophy
+
+**States are enums, Events are dataclasses**
+
+- **States**: Use Python enums to represent the finite set of possible states
+- **Events**: Use dataclasses to represent events, allowing them to carry rich data payloads
+- **Data**: Use dataclasses for FSM instance data to maintain state between transitions
+
+This design provides:
+- **Type safety**: Full typing support with precise event types
+- **Flexibility**: Events can carry any data needed for state transitions
+- **Clarity**: Clear separation between states (what the FSM *is*) and events (what *happens* to the FSM)
 
 ## Development
 

@@ -53,12 +53,14 @@ class DataReceivedEvent:
     timestamp: float
 
 
+@dataclass
 class DisconnectEvent:
     """Request to disconnect."""
 
     pass
 
 
+@dataclass
 class RetryEvent:
     """Retry connection attempt."""
 

@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import Union
 
 import pytest
 
@@ -13,9 +14,17 @@ class SimpleState(Enum):
     B = auto()
 
 
-class SimpleEvent(Enum):
-    GO = auto()
-    BACK = auto()
+@dataclass
+class GoEvent:
+    pass
+
+
+@dataclass
+class BackEvent:
+    pass
+
+
+SimpleEvent = Union[GoEvent, BackEvent]
 
 
 @dataclass
@@ -30,16 +39,16 @@ def test_basic_transition():
         data=SimpleData(),
     )
 
-    @fsm.on(SimpleState.A, SimpleEvent.GO)
+    @fsm.on(SimpleState.A, GoEvent)
     def _a_to_b(  # pyright: ignore[reportUnusedFunction]
-        fsm: FSM[SimpleState, SimpleEvent, SimpleData], event: SimpleEvent
+        fsm: FSM[SimpleState, SimpleEvent, SimpleData], event: GoEvent
     ) -> SimpleState:
         fsm.data.counter += 1
         return SimpleState.B
 
-    @fsm.on(SimpleState.B, SimpleEvent.BACK)
+    @fsm.on(SimpleState.B, BackEvent)
     def _b_to_a(  # pyright: ignore[reportUnusedFunction]
-        fsm: FSM[SimpleState, SimpleEvent, SimpleData], event: SimpleEvent
+        fsm: FSM[SimpleState, SimpleEvent, SimpleData], event: BackEvent
     ) -> SimpleState:
         fsm.data.counter += 1
         return SimpleState.A
@@ -47,12 +56,12 @@ def test_basic_transition():
     assert fsm.state == SimpleState.A
     assert fsm.data.counter == 0
 
-    new_state = fsm.send(SimpleEvent.GO)
+    new_state = fsm.send(GoEvent())
     assert new_state == SimpleState.B
     assert fsm.state == SimpleState.B
     assert fsm.data.counter == 1
 
-    new_state = fsm.send(SimpleEvent.BACK)
+    new_state = fsm.send(BackEvent())
     assert new_state == SimpleState.A
     assert fsm.state == SimpleState.A
     expected_count = 2
@@ -67,4 +76,4 @@ def test_missing_handler():
     )
 
     with pytest.raises(RuntimeError, match="No handler for"):
-        fsm.send(SimpleEvent.GO)
+        fsm.send(GoEvent())

@@ -10,14 +10,13 @@ from typing import (
     Generic,
     Protocol,
     TypeVar,
-    Union,
     cast,
 )
 
 # --- type parameters ---------------------------------------------------------
 
 S = TypeVar("S", bound=Enum)  # State enum  (e.g. LightState)
-E = TypeVar("E")  # Event type  (e.g. LightEvent enum or complex event class)
+E = TypeVar("E")  # Event type  (must be a dataclass)
 D = TypeVar("D")  # Arbitrary user data
 
 # --- handler protocol --------------------------------------------------------
@@ -25,7 +24,7 @@ D = TypeVar("D")  # Arbitrary user data
 
 # Event handler type - we use TypeVar to allow handlers to accept
 # specific event types that are part of a union
-EventType = TypeVar("EventType")
+SpecificEventType = TypeVar("SpecificEventType")
 
 
 class Handler(Protocol[S, E, D]):
@@ -53,30 +52,24 @@ class FSM(Generic[S, E, D]):
 
     # ――― decorator for registering handlers ―――
     def on(
-        self, state: S, event_type: Union[E, type[Any]]
-    ) -> Callable[[Callable[[FSM[S, E, D], Any], S]], Callable[[FSM[S, E, D], Any], S]]:
+        self, state: S, event_type: type[SpecificEventType]
+    ) -> Callable[
+        [Callable[[FSM[S, E, D], SpecificEventType], S]],
+        Callable[[FSM[S, E, D], SpecificEventType], S],
+    ]:
         """Register a handler for a state/event combination.
 
         Usage:
         ```python
-        # With enum events:
-        @fsm.on(State.ON, Event.TOGGLE)
-        def turn_off(fsm, evt): ...
-
-        # With complex events:
         @fsm.on(State.CONNECTING, ConnectionErrorEvent)
         def handle_error(fsm, evt): ...
         ```
         """
 
         def decorator(
-            fn: Callable[[FSM[S, E, D], Any], S],
-        ) -> Callable[[FSM[S, E, D], Any], S]:
-            # For enum events, store by value; for others, by type
-            if isinstance(event_type, Enum):
-                key = (state, event_type)
-            else:
-                key = (state, event_type)
+            fn: Callable[[FSM[S, E, D], SpecificEventType], S],
+        ) -> Callable[[FSM[S, E, D], SpecificEventType], S]:
+            key = (state, event_type)
             self._handlers[key] = cast(Handler[S, E, D], fn)
             return fn
 
@@ -85,16 +78,12 @@ class FSM(Generic[S, E, D]):
     # ――― event dispatcher ―――
     def send(self, event: E) -> S:
         """Send an event to the FSM and transition to the next state."""
-        # For enum events, look up by value; for others, by type
-        if isinstance(event, Enum):
-            key = (self.state, event)
-        else:
-            key = (self.state, type(event))
+        key = (self.state, type(event))
 
         try:
             handler = self._handlers[key]
         except KeyError as e:
-            event_repr = event if isinstance(event, Enum) else type(event).__name__
+            event_repr = type(event).__name__
             msg = f"No handler for ({self.state}, {event_repr})"
             raise RuntimeError(msg) from e
         self.state = handler(self, event)  # may mutate self.data
