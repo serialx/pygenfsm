@@ -8,8 +8,8 @@ A minimal, clean, typed and synchronous FSM (Finite State Machine) implementatio
 - **Minimal**: Clean, simple API with no dependencies
 - **Pythonic**: Decorator-based state handler registration
 - **Synchronous**: Simple, predictable execution model
-- **Data-driven**: Each FSM instance can carry custom data
-- **Dataclass events**: Events are dataclasses that can carry rich data payloads
+- **Context-driven**: Each FSM instance can carry custom data
+- **Contextclass events**: Events are dataclasses that can carry rich data payloads
 
 ## Requirements
 
@@ -39,16 +39,16 @@ class ToggleEvent:
 
 # Optional: Define custom data
 @dataclass
-class LightData:
+class LightContext:
     toggles: int = 0
 
 # Type alias for cleaner code
-LightFSM = FSM[LightState, ToggleEvent, LightData]
+LightFSM = FSM[LightState, ToggleEvent, LightContext]
 
 # Create FSM instance
 fsm = LightFSM(
     state=LightState.OFF,
-    data=LightData(),
+    data=LightContext(),
 )
 
 # Register handlers using decorators
@@ -70,7 +70,7 @@ fsm.send(ToggleEvent())  # Light turned OFF
 print(f"Total toggles: {fsm.data.toggles}")  # Total toggles: 2
 ```
 
-## Complex Events with Data
+## Complex Events with Context
 
 Events can carry rich data payloads since they're dataclasses:
 
@@ -96,14 +96,14 @@ class LockEvent:
 DoorEvent = UnlockEvent | LockEvent
 
 @dataclass
-class DoorData:
+class DoorContext:
     unlock_attempts: int = 0
     last_user: int = 0
 
 # Type alias
-DoorFSM = FSM[DoorState, DoorEvent, DoorData]
+DoorFSM = FSM[DoorState, DoorEvent, DoorContext]
 
-door = DoorFSM(state=DoorState.LOCKED, data=DoorData())
+door = DoorFSM(state=DoorState.LOCKED, data=DoorContext())
 
 @door.on(DoorState.LOCKED, UnlockEvent)
 def unlock_door(fsm: DoorFSM, event: UnlockEvent) -> DoorState:
@@ -141,7 +141,7 @@ Check out the `examples/` directory for more complex examples:
 
 - **States**: Use Python enums to represent the finite set of possible states
 - **Events**: Use dataclasses to represent events, allowing them to carry rich data payloads
-- **Data**: Use dataclasses for FSM instance data to maintain state between transitions
+- **Context**: Use dataclasses for FSM instance data to maintain state between transitions
 
 This design provides:
 - **Type safety**: Full typing support with precise event types

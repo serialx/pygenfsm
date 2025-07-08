@@ -17,7 +17,7 @@ from typing import (
 
 S = TypeVar("S", bound=Enum)  # State enum  (e.g. LightState)
 E = TypeVar("E")  # Event type  (must be a dataclass)
-D = TypeVar("D")  # Arbitrary user data
+C = TypeVar("C")  # Arbitrary user data
 
 # --- handler protocol --------------------------------------------------------
 
@@ -27,14 +27,14 @@ D = TypeVar("D")  # Arbitrary user data
 SpecificEventType = TypeVar("SpecificEventType")
 
 
-class Handler(Protocol[S, E, D]):
+class Handler(Protocol[S, E, C]):
     """A state-transition handler.
 
     Returns the *next* state after handling `event` and (optionally) mutating
     `fsm.data`.
     """
 
-    def __call__(self, fsm: FSM[S, E, D], event: E) -> S:
+    def __call__(self, fsm: FSM[S, E, C], event: E) -> S:
         """Handle the state transition."""
         ...
 
@@ -43,19 +43,19 @@ class Handler(Protocol[S, E, D]):
 
 
 @dataclass
-class FSM(Generic[S, E, D]):
+class FSM(Generic[S, E, C]):
     """Minimal synchronous FSM (a Pythonic `gen_fsm`)."""
 
     state: S
-    data: D
-    _handlers: dict[tuple[S, Any], Handler[S, E, D]] = field(default_factory=lambda: {})
+    context: C
+    _handlers: dict[tuple[S, Any], Handler[S, E, C]] = field(default_factory=lambda: {})
 
     # ――― decorator for registering handlers ―――
     def on(
         self, state: S, event_type: type[SpecificEventType]
     ) -> Callable[
-        [Callable[[FSM[S, E, D], SpecificEventType], S]],
-        Callable[[FSM[S, E, D], SpecificEventType], S],
+        [Callable[[FSM[S, E, C], SpecificEventType], S]],
+        Callable[[FSM[S, E, C], SpecificEventType], S],
     ]:
         """Register a handler for a state/event combination.
 
@@ -67,10 +67,10 @@ class FSM(Generic[S, E, D]):
         """
 
         def decorator(
-            fn: Callable[[FSM[S, E, D], SpecificEventType], S],
-        ) -> Callable[[FSM[S, E, D], SpecificEventType], S]:
+            fn: Callable[[FSM[S, E, C], SpecificEventType], S],
+        ) -> Callable[[FSM[S, E, C], SpecificEventType], S]:
             key = (state, event_type)
-            self._handlers[key] = cast(Handler[S, E, D], fn)
+            self._handlers[key] = cast(Handler[S, E, C], fn)
             return fn
 
         return decorator

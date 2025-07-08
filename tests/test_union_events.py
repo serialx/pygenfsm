@@ -33,7 +33,7 @@ DoorEvent = UnlockEvent | LockEvent | ForceOpenEvent
 
 
 @dataclass
-class DoorData:
+class DoorContext:
     unlock_attempts: int = 0
     last_code: str = ""
 
@@ -41,29 +41,29 @@ class DoorData:
 def test_union_event_types():
     """Test that FSM works correctly with union event types."""
     # Create FSM with union event type
-    fsm = FSM[DoorState, DoorEvent, DoorData](
+    fsm = FSM[DoorState, DoorEvent, DoorContext](
         state=DoorState.LOCKED,
-        data=DoorData(),
+        context=DoorContext(),
     )
 
     # Register handlers for specific event types
     @fsm.on(DoorState.LOCKED, UnlockEvent)
     def _unlock(  # pyright: ignore[reportUnusedFunction]
-        fsm: FSM[DoorState, DoorEvent, DoorData], event: UnlockEvent
+        fsm: FSM[DoorState, DoorEvent, DoorContext], event: UnlockEvent
     ) -> DoorState:
-        fsm.data.unlock_attempts += 1
-        fsm.data.last_code = event.code
+        fsm.context.unlock_attempts += 1
+        fsm.context.last_code = event.code
         return DoorState.UNLOCKED
 
     @fsm.on(DoorState.UNLOCKED, LockEvent)
     def _lock(  # pyright: ignore[reportUnusedFunction]
-        fsm: FSM[DoorState, DoorEvent, DoorData], event: LockEvent
+        fsm: FSM[DoorState, DoorEvent, DoorContext], event: LockEvent
     ) -> DoorState:
         return DoorState.LOCKED
 
     @fsm.on(DoorState.LOCKED, ForceOpenEvent)
     def _force_open(  # pyright: ignore[reportUnusedFunction]
-        fsm: FSM[DoorState, DoorEvent, DoorData], event: ForceOpenEvent
+        fsm: FSM[DoorState, DoorEvent, DoorContext], event: ForceOpenEvent
     ) -> DoorState:
         if event.admin_override:
             return DoorState.UNLOCKED
@@ -73,8 +73,8 @@ def test_union_event_types():
     assert fsm.state == DoorState.LOCKED
     fsm.send(UnlockEvent(code="1234"))
     assert fsm.state == DoorState.UNLOCKED
-    assert fsm.data.unlock_attempts == 1
-    assert fsm.data.last_code == "1234"
+    assert fsm.context.unlock_attempts == 1
+    assert fsm.context.last_code == "1234"
 
     # Test lock
     fsm.send(LockEvent(auto_lock=True))
@@ -91,9 +91,9 @@ def test_union_event_types():
 
 def test_missing_handler_with_union():
     """Test that missing handlers raise appropriate errors with union types."""
-    fsm = FSM[DoorState, DoorEvent, DoorData](
+    fsm = FSM[DoorState, DoorEvent, DoorContext](
         state=DoorState.LOCKED,
-        data=DoorData(),
+        context=DoorContext(),
     )
 
     # No handler registered for UnlockEvent

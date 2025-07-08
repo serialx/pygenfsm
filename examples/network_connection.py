@@ -45,8 +45,8 @@ class ConnectionErrorEvent:
 
 
 @dataclass
-class DataReceivedEvent:
-    """Data received from server."""
+class ContextReceivedEvent:
+    """Context received from server."""
 
     data: bytes
     timestamp: float
@@ -71,7 +71,7 @@ ConnectionEvent = (
     ConnectEvent
     | ConnectionEstablishedEvent
     | ConnectionErrorEvent
-    | DataReceivedEvent
+    | ContextReceivedEvent
     | DisconnectEvent
     | RetryEvent
 )
@@ -79,7 +79,7 @@ ConnectionEvent = (
 
 # Connection data
 @dataclass
-class ConnectionData:
+class ConnectionContext:
     current_host: str | None = None
     current_port: int | None = None
     session_id: str | None = None
@@ -90,12 +90,12 @@ class ConnectionData:
 
 
 # Type alias
-ConnectionFSM = FSM[ConnectionState, ConnectionEvent, ConnectionData]
+ConnectionFSM = FSM[ConnectionState, ConnectionEvent, ConnectionContext]
 
 # Create FSM
 connection = ConnectionFSM(
     state=ConnectionState.DISCONNECTED,
-    data=ConnectionData(),
+    context=ConnectionContext(),
 )
 
 
@@ -103,9 +103,9 @@ connection = ConnectionFSM(
 @connection.on(ConnectionState.DISCONNECTED, ConnectEvent)
 def start_connection(fsm: ConnectionFSM, event: ConnectEvent) -> ConnectionState:
     print(f"🔌 Connecting to {event.host}:{event.port} (timeout: {event.timeout}s)")
-    fsm.data.current_host = event.host
-    fsm.data.current_port = event.port
-    fsm.data.retry_count = 0
+    fsm.context.current_host = event.host
+    fsm.context.current_port = event.port
+    fsm.context.retry_count = 0
     return ConnectionState.CONNECTING
 
 
@@ -115,8 +115,8 @@ def connection_established(
     fsm: ConnectionFSM, event: ConnectionEstablishedEvent
 ) -> ConnectionState:
     print(f"✅ Connected! Session: {event.session_id}, Latency: {event.latency_ms}ms")
-    fsm.data.session_id = event.session_id
-    fsm.data.last_error = None
+    fsm.context.session_id = event.session_id
+    fsm.context.last_error = None
     return ConnectionState.CONNECTED
 
 
@@ -126,11 +126,11 @@ def connection_failed(
     fsm: ConnectionFSM, event: ConnectionErrorEvent
 ) -> ConnectionState:
     print(f"❌ Connection failed: [{event.error_code}] {event.message}")
-    fsm.data.last_error = event.message
+    fsm.context.last_error = event.message
 
-    if fsm.data.retry_count < fsm.data.max_retries:
-        fsm.data.retry_count += 1
-        print(f"🔄 Will retry ({fsm.data.retry_count}/{fsm.data.max_retries})")
+    if fsm.context.retry_count < fsm.context.max_retries:
+        fsm.context.retry_count += 1
+        print(f"🔄 Will retry ({fsm.context.retry_count}/{fsm.context.max_retries})")
         if event.retry_after:
             print(f"   Waiting {event.retry_after}s before retry...")
         return ConnectionState.RECONNECTING
@@ -140,25 +140,27 @@ def connection_failed(
 
 
 # Handler for CONNECTED state - receive data
-@connection.on(ConnectionState.CONNECTED, DataReceivedEvent)
-def handle_data(fsm: ConnectionFSM, event: DataReceivedEvent) -> ConnectionState:
-    fsm.data.bytes_received += len(event.data)
-    print(f"📦 Received {len(event.data)} bytes (total: {fsm.data.bytes_received})")
+@connection.on(ConnectionState.CONNECTED, ContextReceivedEvent)
+def handle_data(fsm: ConnectionFSM, event: ContextReceivedEvent) -> ConnectionState:
+    fsm.context.bytes_received += len(event.data)
+    print(f"📦 Received {len(event.data)} bytes (total: {fsm.context.bytes_received})")
     return ConnectionState.CONNECTED
 
 
 # Handler for CONNECTED state - disconnect
 @connection.on(ConnectionState.CONNECTED, DisconnectEvent)
 def disconnect(fsm: ConnectionFSM, event: DisconnectEvent) -> ConnectionState:
-    print(f"👋 Disconnecting from {fsm.data.current_host}:{fsm.data.current_port}")
-    print(f"   Session {fsm.data.session_id} ended")
-    print(f"   Total bytes received: {fsm.data.bytes_received}")
+    print(
+        f"👋 Disconnecting from {fsm.context.current_host}:{fsm.context.current_port}"
+    )
+    print(f"   Session {fsm.context.session_id} ended")
+    print(f"   Total bytes received: {fsm.context.bytes_received}")
 
     # Clear connection data
-    fsm.data.current_host = None
-    fsm.data.current_port = None
-    fsm.data.session_id = None
-    fsm.data.bytes_received = 0
+    fsm.context.current_host = None
+    fsm.context.current_port = None
+    fsm.context.session_id = None
+    fsm.context.bytes_received = 0
 
     return ConnectionState.DISCONNECTED
 
@@ -167,15 +169,17 @@ def disconnect(fsm: ConnectionFSM, event: DisconnectEvent) -> ConnectionState:
 @connection.on(ConnectionState.CONNECTED, ConnectionErrorEvent)
 def connection_lost(fsm: ConnectionFSM, event: ConnectionErrorEvent) -> ConnectionState:
     print(f"⚠️  Connection lost: [{event.error_code}] {event.message}")
-    fsm.data.last_error = event.message
-    fsm.data.retry_count = 0
+    fsm.context.last_error = event.message
+    fsm.context.retry_count = 0
     return ConnectionState.RECONNECTING
 
 
 # Handler for RECONNECTING state
 @connection.on(ConnectionState.RECONNECTING, RetryEvent)
 def retry_connection(fsm: ConnectionFSM, event: RetryEvent) -> ConnectionState:
-    print(f"🔄 Retrying connection to {fsm.data.current_host}:{fsm.data.current_port}")
+    print(
+        f"🔄 Retrying connection to {fsm.context.current_host}:{fsm.context.current_port}"
+    )
     return ConnectionState.CONNECTING
 
 
@@ -183,8 +187,8 @@ def retry_connection(fsm: ConnectionFSM, event: RetryEvent) -> ConnectionState:
 @connection.on(ConnectionState.ERROR, DisconnectEvent)
 def error_disconnect(fsm: ConnectionFSM, event: DisconnectEvent) -> ConnectionState:
     print("🔴 Clearing error state and disconnecting")
-    fsm.data.last_error = None
-    fsm.data.retry_count = 0
+    fsm.context.last_error = None
+    fsm.context.retry_count = 0
     return ConnectionState.DISCONNECTED
 
 
@@ -215,7 +219,7 @@ if __name__ == "__main__":
 
     for i in range(3):
         connection.send(
-            DataReceivedEvent(data=f"Packet {i}".encode(), timestamp=time.time())
+            ContextReceivedEvent(data=f"Packet {i}".encode(), timestamp=time.time())
         )
 
     # Connection error while connected
@@ -231,4 +235,4 @@ if __name__ == "__main__":
     connection.send(DisconnectEvent())
 
     print(f"\nFinal state: {connection.state.name}")
-    print(f"Last error: {connection.data.last_error}")
+    print(f"Last error: {connection.context.last_error}")

@@ -41,7 +41,7 @@ All checks must pass before considering a task complete.
 ### Examples
 
 When creating examples:
-- Use type aliases for cleaner code (e.g., `LightFSM = FSM[LightState, LightEvent, LightData]`)
+- Use type aliases for cleaner code (e.g., `LightFSM = FSM[LightState, LightEvent, LightContext]`)
 - Demonstrate both simple (enum) and complex (dataclass) event types
 - Include docstrings explaining the example's purpose
 - Make examples self-contained and runnable

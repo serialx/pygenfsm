@@ -18,30 +18,30 @@ class ToggleEvent:
 
 # Shared mutable data (totally optional)
 @dataclass
-class LightData:
+class LightContext:
     toggles: int = 0
 
 
 # Type alias for cleaner code
-LightFSM = FSM[LightState, ToggleEvent, LightData]
+LightFSM = FSM[LightState, ToggleEvent, LightContext]
 
 # Build the FSM ---------------------------------------------------------------
 fsm = LightFSM(
     state=LightState.OFF,
-    data=LightData(),
+    context=LightContext(),
 )
 
 
 @fsm.on(LightState.OFF, ToggleEvent)
 def turn_on(fsm: LightFSM, event: ToggleEvent) -> LightState:
-    fsm.data.toggles += 1
+    fsm.context.toggles += 1
     print("💡  switched ON")
     return LightState.ON
 
 
 @fsm.on(LightState.ON, ToggleEvent)
 def turn_off(fsm: LightFSM, event: ToggleEvent) -> LightState:
-    fsm.data.toggles += 1
+    fsm.context.toggles += 1
     print("💡  switched OFF")
     return LightState.OFF
 
@@ -51,4 +51,4 @@ if __name__ == "__main__":
     for _ in range(3):
         fsm.send(ToggleEvent())
 
-    print("Total toggles:", fsm.data.toggles)
+    print("Total toggles:", fsm.context.toggles)

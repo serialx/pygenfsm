@@ -65,7 +65,7 @@ class RefundRequestEvent:
 
 # Payment data
 @dataclass
-class PaymentData:
+class PaymentContext:
     amount: Decimal | None = None
     currency: str | None = None
     customer_id: str | None = None
@@ -90,12 +90,12 @@ PaymentEvent = (
 )
 
 # Type alias
-PaymentFSM = FSM[PaymentState, PaymentEvent, PaymentData]
+PaymentFSM = FSM[PaymentState, PaymentEvent, PaymentContext]
 
 # Create FSM
 payment = PaymentFSM(
     state=PaymentState.PENDING,
-    data=PaymentData(),
+    context=PaymentContext(),
 )
 
 
@@ -106,9 +106,9 @@ def initiate_payment(fsm: PaymentFSM, event: InitiatePaymentEvent) -> PaymentSta
     print(f"   Customer: {event.customer_id}")
     print(f"   Method: {event.payment_method}")
 
-    fsm.data.amount = event.amount
-    fsm.data.currency = event.currency
-    fsm.data.customer_id = event.customer_id
+    fsm.context.amount = event.amount
+    fsm.context.currency = event.currency
+    fsm.context.customer_id = event.customer_id
 
     return PaymentState.PROCESSING
 
@@ -118,7 +118,7 @@ def payment_authorized(fsm: PaymentFSM, event: PaymentAuthorizedEvent) -> Paymen
     print("✅ Payment authorized!")
     print(f"   Auth code: {event.authorization_code}")
 
-    fsm.data.authorization_code = event.authorization_code
+    fsm.context.authorization_code = event.authorization_code
 
     # In real world, we'd capture the payment here
     # For demo, we'll auto-complete it
@@ -129,9 +129,9 @@ def payment_authorized(fsm: PaymentFSM, event: PaymentAuthorizedEvent) -> Paymen
 def payment_completed(fsm: PaymentFSM, event: PaymentCompletedEvent) -> PaymentState:
     print("🎉 Payment completed successfully!")
     print(f"   Transaction ID: {event.transaction_id}")
-    print(f"   Amount: {fsm.data.amount} {fsm.data.currency}")
+    print(f"   Amount: {fsm.context.amount} {fsm.context.currency}")
 
-    fsm.data.transaction_id = event.transaction_id
+    fsm.context.transaction_id = event.transaction_id
 
     return PaymentState.COMPLETED
 
@@ -141,7 +141,7 @@ def payment_failed(fsm: PaymentFSM, event: PaymentFailedEvent) -> PaymentState:
     print("❌ Payment failed!")
     print(f"   Error: [{event.error_code}] {event.error_message}")
 
-    fsm.data.error_message = event.error_message
+    fsm.context.error_message = event.error_message
 
     if event.can_retry:
         print("   ⚡ Payment can be retried")
@@ -152,11 +152,11 @@ def payment_failed(fsm: PaymentFSM, event: PaymentFailedEvent) -> PaymentState:
 
 @payment.on(PaymentState.COMPLETED, RefundRequestEvent)
 def process_refund(fsm: PaymentFSM, event: RefundRequestEvent) -> PaymentState:
-    refund_amount = event.amount or fsm.data.amount
-    print(f"💸 Processing refund of {refund_amount} {fsm.data.currency}")
+    refund_amount = event.amount or fsm.context.amount
+    print(f"💸 Processing refund of {refund_amount} {fsm.context.currency}")
     print(f"   Reason: {event.reason}")
 
-    fsm.data.refund_amount = refund_amount
+    fsm.context.refund_amount = refund_amount
 
     return PaymentState.REFUNDED
 
@@ -202,4 +202,4 @@ if __name__ == "__main__":
     )
 
     print(f"\nFinal state: {payment.state.name}")
-    print(f"Transaction ID: {payment.data.transaction_id}")
+    print(f"Transaction ID: {payment.context.transaction_id}")

@@ -27,51 +27,51 @@ SimpleEvent = GoEvent | BackEvent
 
 
 @dataclass
-class SimpleData:
+class SimpleContext:
     counter: int = 0
 
 
 def test_basic_transition():
     """Test basic state transitions."""
-    fsm = FSM[SimpleState, SimpleEvent, SimpleData](
+    fsm = FSM[SimpleState, SimpleEvent, SimpleContext](
         state=SimpleState.A,
-        data=SimpleData(),
+        context=SimpleContext(),
     )
 
     @fsm.on(SimpleState.A, GoEvent)
     def _a_to_b(  # pyright: ignore[reportUnusedFunction]
-        fsm: FSM[SimpleState, SimpleEvent, SimpleData], event: GoEvent
+        fsm: FSM[SimpleState, SimpleEvent, SimpleContext], event: GoEvent
     ) -> SimpleState:
-        fsm.data.counter += 1
+        fsm.context.counter += 1
         return SimpleState.B
 
     @fsm.on(SimpleState.B, BackEvent)
     def _b_to_a(  # pyright: ignore[reportUnusedFunction]
-        fsm: FSM[SimpleState, SimpleEvent, SimpleData], event: BackEvent
+        fsm: FSM[SimpleState, SimpleEvent, SimpleContext], event: BackEvent
     ) -> SimpleState:
-        fsm.data.counter += 1
+        fsm.context.counter += 1
         return SimpleState.A
 
     assert fsm.state == SimpleState.A
-    assert fsm.data.counter == 0
+    assert fsm.context.counter == 0
 
     new_state = fsm.send(GoEvent())
     assert new_state == SimpleState.B
     assert fsm.state == SimpleState.B
-    assert fsm.data.counter == 1
+    assert fsm.context.counter == 1
 
     new_state = fsm.send(BackEvent())
     assert new_state == SimpleState.A
     assert fsm.state == SimpleState.A
     expected_count = 2
-    assert fsm.data.counter == expected_count
+    assert fsm.context.counter == expected_count
 
 
 def test_missing_handler():
     """Test that missing handlers raise RuntimeError."""
-    fsm = FSM[SimpleState, SimpleEvent, SimpleData](
+    fsm = FSM[SimpleState, SimpleEvent, SimpleContext](
         state=SimpleState.A,
-        data=SimpleData(),
+        context=SimpleContext(),
     )
 
     with pytest.raises(RuntimeError, match="No handler for"):
