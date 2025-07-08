@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Union
 
 from pygenfsm import FSM
 
@@ -33,7 +32,7 @@ class TrafficData:
 
 
 # Union type for traffic events
-TrafficEvent = Union[TimerEvent, EmergencyEvent]
+TrafficEvent = TimerEvent | EmergencyEvent
 
 # Type alias for cleaner code
 TrafficFSM = FSM[TrafficState, TrafficEvent, TrafficData]
@@ -108,7 +107,7 @@ class DoorData:
 
 
 # Union type for door events
-DoorEvent = Union[UnlockEvent, LockEvent, BreachAttemptEvent, ResetEvent]
+DoorEvent = UnlockEvent | LockEvent | BreachAttemptEvent | ResetEvent
 
 # Type alias for cleaner code
 DoorFSM = FSM[DoorState, DoorEvent, DoorData]

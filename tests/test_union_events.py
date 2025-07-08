@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Union
 
 import pytest
 
@@ -30,7 +29,7 @@ class ForceOpenEvent:
 
 
 # Union type for events
-DoorEvent = Union[UnlockEvent, LockEvent, ForceOpenEvent]
+DoorEvent = UnlockEvent | LockEvent | ForceOpenEvent
 
 
 @dataclass

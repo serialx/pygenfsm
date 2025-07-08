@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Optional, Union
 
 from pygenfsm import FSM
 
@@ -42,7 +41,7 @@ class ConnectionErrorEvent:
 
     error_code: int
     message: str
-    retry_after: Optional[float] = None
+    retry_after: float | None = None
 
 
 @dataclass
@@ -67,26 +66,26 @@ class RetryEvent:
     pass
 
 
-# Union type for all events (use Union for Python 3.8 compatibility)
-ConnectionEvent = Union[
-    ConnectEvent,
-    ConnectionEstablishedEvent,
-    ConnectionErrorEvent,
-    DataReceivedEvent,
-    DisconnectEvent,
-    RetryEvent,
-]
+# Union type for all events
+ConnectionEvent = (
+    ConnectEvent
+    | ConnectionEstablishedEvent
+    | ConnectionErrorEvent
+    | DataReceivedEvent
+    | DisconnectEvent
+    | RetryEvent
+)
 
 
 # Connection data
 @dataclass
 class ConnectionData:
-    current_host: Optional[str] = None
-    current_port: Optional[int] = None
-    session_id: Optional[str] = None
+    current_host: str | None = None
+    current_port: int | None = None
+    session_id: str | None = None
     retry_count: int = 0
     max_retries: int = 3
-    last_error: Optional[str] = None
+    last_error: str | None = None
     bytes_received: int = 0
 
 

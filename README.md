@@ -11,6 +11,10 @@ A minimal, clean, typed and synchronous FSM (Finite State Machine) implementatio
 - **Data-driven**: Each FSM instance can carry custom data
 - **Dataclass events**: Events are dataclasses that can carry rich data payloads
 
+## Requirements
+
+- Python 3.11+
+
 ## Installation
 
 ```bash
@@ -73,7 +77,6 @@ Events can carry rich data payloads since they're dataclasses:
 ```python
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Union
 from pygenfsm import FSM
 
 class DoorState(Enum):
@@ -90,7 +93,7 @@ class LockEvent:
     auto_lock: bool = False
 
 # Union type for multiple event types
-DoorEvent = Union[UnlockEvent, LockEvent]
+DoorEvent = UnlockEvent | LockEvent
 
 @dataclass
 class DoorData:

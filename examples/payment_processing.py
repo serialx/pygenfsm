@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum, auto
-from typing import Optional, Union
 
 from pygenfsm import FSM
 
@@ -61,20 +60,20 @@ class RefundRequestEvent:
     """Request to refund the payment."""
 
     reason: str
-    amount: Optional[Decimal] = None  # None means full refund
+    amount: Decimal | None = None  # None means full refund
 
 
 # Payment data
 @dataclass
 class PaymentData:
-    amount: Optional[Decimal] = None
-    currency: Optional[str] = None
-    customer_id: Optional[str] = None
-    transaction_id: Optional[str] = None
-    authorization_code: Optional[str] = None
-    error_message: Optional[str] = None
-    refund_amount: Optional[Decimal] = None
-    created_at: Optional[datetime] = None
+    amount: Decimal | None = None
+    currency: str | None = None
+    customer_id: str | None = None
+    transaction_id: str | None = None
+    authorization_code: str | None = None
+    error_message: str | None = None
+    refund_amount: Decimal | None = None
+    created_at: datetime | None = None
 
     def __post_init__(self):
         if self.created_at is None:
@@ -82,13 +81,13 @@ class PaymentData:
 
 
 # Union type for all payment events
-PaymentEvent = Union[
-    InitiatePaymentEvent,
-    PaymentAuthorizedEvent,
-    PaymentCompletedEvent,
-    PaymentFailedEvent,
-    RefundRequestEvent,
-]
+PaymentEvent = (
+    InitiatePaymentEvent
+    | PaymentAuthorizedEvent
+    | PaymentCompletedEvent
+    | PaymentFailedEvent
+    | RefundRequestEvent
+)
 
 # Type alias
 PaymentFSM = FSM[PaymentState, PaymentEvent, PaymentData]

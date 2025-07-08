@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import (
     Any,
-    Callable,
     Generic,
     Protocol,
     TypeVar,

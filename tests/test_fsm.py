@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Union
 
 import pytest
 
@@ -24,7 +23,7 @@ class BackEvent:
     pass
 
 
-SimpleEvent = Union[GoEvent, BackEvent]
+SimpleEvent = GoEvent | BackEvent
 
 
 @dataclass
