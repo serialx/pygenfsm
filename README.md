@@ -49,26 +49,26 @@ LightFSM = FSM[LightState, ToggleEvent, LightContext]
 # Create FSM instance
 fsm = LightFSM(
     state=LightState.OFF,
-    data=LightContext(),
+    context=LightContext(),
 )
 
 # Register handlers using decorators
 @fsm.on(LightState.OFF, ToggleEvent)
 def turn_on(fsm: LightFSM, event: ToggleEvent):
-    fsm.data.toggles += 1
+    fsm.context.toggles += 1
     print("Light turned ON")
     return LightState.ON
 
 @fsm.on(LightState.ON, ToggleEvent)
 def turn_off(fsm: LightFSM, event: ToggleEvent):
-    fsm.data.toggles += 1
+    fsm.context.toggles += 1
     print("Light turned OFF")
     return LightState.OFF
 
 # Use the FSM
 fsm.send(ToggleEvent())  # Light turned ON
 fsm.send(ToggleEvent())  # Light turned OFF
-print(f"Total toggles: {fsm.data.toggles}")  # Total toggles: 2
+print(f"Total toggles: {fsm.context.toggles}")  # Total toggles: 2
 ```
 
 ## Complex Events with Context
@@ -104,16 +104,16 @@ class DoorContext:
 # Type alias
 DoorFSM = FSM[DoorState, DoorEvent, DoorContext]
 
-door = DoorFSM(state=DoorState.LOCKED, data=DoorContext())
+door = DoorFSM(state=DoorState.LOCKED, context=DoorContext())
 
 @door.on(DoorState.LOCKED, UnlockEvent)
 def unlock_door(fsm: DoorFSM, event: UnlockEvent) -> DoorState:
     if event.code == "1234":
-        fsm.data.last_user = event.user_id
+        fsm.context.last_user = event.user_id
         print(f"Door unlocked by user {event.user_id}")
         return DoorState.UNLOCKED
     else:
-        fsm.data.unlock_attempts += 1
+        fsm.context.unlock_attempts += 1
         print(f"Invalid code from user {event.user_id}")
         return DoorState.LOCKED
 
@@ -127,32 +127,39 @@ door.send(UnlockEvent(code="1234", user_id=42))
 door.send(LockEvent(auto_lock=True))
 ```
 
-## Cloning FSM Instances
+## Late Context Injection with FSMBuilder
 
-You can create independent copies of an FSM using the `clone()` method:
+When your context contains objects that are created later in the application lifecycle (like database connections), use `FSMBuilder`:
 
 ```python
-# Create an FSM
-original = FSM(state=State.IDLE, context=Context(counter=0))
+from pygenfsm import FSMBuilder
 
-# ... register handlers ...
+# Define your FSM builder without context
+builder = FSMBuilder[State, Event, Context](initial_state=State.IDLE)
 
-# Clone the FSM
-cloned = original.clone()
+# Register handlers on the builder
+@builder.on(State.IDLE, StartEvent)
+def handle_start(fsm, event: StartEvent) -> State:
+    # No need to check if context is None!
+    fsm.context.connection.send(event.data)
+    return State.ACTIVE
 
-# The clone has:
-# - Same state as original
-# - Deep copy of context (independent data)
-# - Same handlers (shared behavior)
+# Later, when dependencies are available...
+db_connection = create_database_connection()
+context = Context(connection=db_connection)
 
-# Modifications to one don't affect the other
-cloned.send(SomeEvent())  # Only affects cloned FSM
+# Build FSM instance with context
+fsm = builder.build(context)
+
+# Or create multiple instances with different contexts
+fsm1 = builder.build(Context(connection=conn1))
+fsm2 = builder.build(Context(connection=conn2))
 ```
 
-This is useful for:
-- Creating multiple independent instances with the same behavior
-- Saving/restoring FSM state
-- Testing different scenarios from the same starting point
+This pattern is useful for:
+- Dependency injection scenarios
+- Creating FSM instances after application initialization
+- Building multiple FSM instances with different contexts but same behavior
 
 ## Examples
 
@@ -162,6 +169,8 @@ Check out the `examples/` directory for more complex examples:
 - `demo.py` - Traffic light and door lock examples
 - `network_connection.py` - Complex events with data payloads
 - `payment_processing.py` - Real-world payment flow with typed events
+- `context_injection.py` - Using FSMBuilder for late context injection
+- `context_replacement.py` - Replacing context in existing FSM instances
 
 ## Design Philosophy
 
