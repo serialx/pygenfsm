@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2025-08-14
+
+### Added
+- Added `py.typed` marker file for PEP 561 compliance
+- Full type checking support for library users with pyright, mypy, and other type checkers
+
 ## [1.0.0] - 2025-08-14
 
 ### Added
@@ -52,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clean, minimal API surface
 - Erlang gen_fsm inspired design
 
-[Unreleased]: https://github.com/serialx/pygenfsm/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/serialx/pygenfsm/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/serialx/pygenfsm/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/serialx/pygenfsm/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/serialx/pygenfsm/releases/tag/v0.1.0
