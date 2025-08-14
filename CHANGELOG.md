@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-08-14
+
+### Added
+- Automated release workflow via GitHub Actions
+- Comprehensive release documentation (RELEASE.md)
+- GitHub Actions workflow for automated PyPI publishing
+- Support for alpha/beta/RC pre-releases
+
+### Changed
+- Production-ready stable release
+- Enhanced CI/CD pipeline with automated testing and publishing
+- Improved package verification in CI workflow
+
+### Fixed
+- GitHub Actions workflow checkout configuration for tag releases
+- Package verification in CI environment with proper venv usage
+
 ## [0.1.0] - 2025-01-14
 
 ### Added
@@ -35,5 +52,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clean, minimal API surface
 - Erlang gen_fsm inspired design
 
-[Unreleased]: https://github.com/serialx/pygenfsm/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/serialx/pygenfsm/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/serialx/pygenfsm/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/serialx/pygenfsm/releases/tag/v0.1.0

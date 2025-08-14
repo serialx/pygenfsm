@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pygenfsm"
-version = "0.1.1a1"
+version = "1.0.0"
 description = "A minimal, clean, typed and async-native FSM (Finite State Machine) implementation inspired by Erlang's gen_fsm"
 readme = "README.md"
 license = "MIT"
