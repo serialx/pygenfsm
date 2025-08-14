@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "pygenfsm"
 version = "0.1.0"
-description = "A minimal, clean, typed and async FSM implementation inspired by Erlang's gen_fsm"
+description = "A minimal, clean, typed and async-native FSM (Finite State Machine) implementation inspired by Erlang's gen_fsm"
 readme = "README.md"
 license = "MIT"
 authors = [
@@ -35,7 +35,9 @@ keywords = [
     "gen_fsm",
     "state-management",
     "workflow",
-    "automation"
+    "automation",
+    "typed",
+    "event-driven"
 ]
 
 [project.urls]
