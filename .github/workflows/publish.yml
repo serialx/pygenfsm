@@ -68,8 +68,9 @@ jobs:
       - name: Check built packages
         run: |
           ls -la dist/
-          # Verify the wheel and source distribution
-          uv pip install --system --dry-run dist/*.whl
+          # Create a venv and verify the wheel installation
+          uv venv
+          uv pip install --dry-run dist/*.whl
       
       # Publish to PyPI for stable releases
       - name: Publish to PyPI
