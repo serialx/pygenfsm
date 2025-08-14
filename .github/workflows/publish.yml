@@ -69,7 +69,7 @@ jobs:
         run: |
           ls -la dist/
           # Verify the wheel and source distribution
-          uv pip install --dry-run dist/*.whl
+          uv pip install --system --dry-run dist/*.whl
       
       # Publish to PyPI for stable releases
       - name: Publish to PyPI
